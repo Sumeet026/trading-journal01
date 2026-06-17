@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ApexTrader | Professional Trading Journal & Analytics</title>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="../css/dashboard.css">
+  <!-- ChartJS -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- ==================== AUTHENTICATION OVERLAY ==================== -->
+  <div id="authOverlay" class="auth-overlay" style="display: none;">
+    <div class="auth-card">
+      <div class="auth-header">
+        <i class="fa-solid fa-chart-line-up"></i>
+        <h2 id="authTitle">Create Account</h2>
+        <p id="authSubtitle">Join thousands of professional traders tracking their growth.</p>
+      </div>
+      
+      <form id="authForm" onsubmit="event.preventDefault();">
+        <div class="form-group mb-4" id="nameGroup">
+          <label for="authName">Full Name</label>
+          <input type="text" id="authName" class="input-control" placeholder="John Doe">
+        </div>
+        
+        <div class="form-group mb-4">
+          <label for="authEmail">Email Address</label>
+          <input type="email" id="authEmail" class="input-control" placeholder="you@example.com" required>
+        </div>
+        
+        <div class="form-group mb-4">
+          <label for="authPassword">Password</label>
+          <input type="password" id="authPassword" class="input-control" placeholder="••••••••" required>
+        </div>
+
+        <div class="flex align-center justify-between mb-4 text-xs">
+          <label class="flex align-center gap-2" style="cursor: pointer;">
+            <input type="checkbox" id="authRemember" checked style="accent-color: var(--primary);">
+            <span>Remember login session</span>
+          </label>
+          <span id="forgotPasswordBtn" class="auth-toggle-link" style="display:none;">Forgot password?</span>
+        </div>
+
+        <button type="submit" id="authSubmitBtn" class="btn btn-primary" style="width: 100%;">Create Account</button>
+      </form>
+
+      <div class="text-center text-sm text-muted mt-2">
+        <span id="authSwitchText">Already have an account?</span>
+        <span id="authSwitchBtn" class="auth-toggle-link ml-1">Log In</span>
+      </div>
+
+      <div class="text-center text-xs text-muted mt-4 border-top pt-3" style="border-top: 1px solid var(--card-border);">
+        <span id="bypassAuthBtn" class="auth-toggle-link" style="color: var(--text-muted);">
+          <i class="fa fa-circle-play mr-2"></i> Use Local Storage (No sign-in required)
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN APPLICATION CONTAINER ==================== -->
+  <div class="app-container" id="appMain" style="display: none;">
+    
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <i class="fa-solid fa-arrow-trend-up"></i>
+        <span>ApexTrader</span>
+      </div>
+      
+      <ul class="sidebar-menu">
+        <li class="sidebar-item active" data-target="dashboardPage">
+          <a href="#"><i class="fa-solid fa-chart-pie"></i><span>Dashboard</span></a>
+        </li>
+        <li class="sidebar-item" data-target="accountsPage">
+          <a href="#"><i class="fa-solid fa-wallet"></i><span>Accounts</span></a>
+        </li>
+        <li class="sidebar-item" data-target="entryPage">
+          <a href="#"><i class="fa-solid fa-circle-plus"></i><span>Journal Trade</span></a>
+        </li>
+        <li class="sidebar-item" data-target="historyPage">
+          <a href="#"><i class="fa-solid fa-list-check"></i><span>Trade History</span></a>
+        </li>
+        <li class="sidebar-item" data-target="analyticsPage">
+          <a href="#"><i class="fa-solid fa-chart-column"></i><span>Analytics Hub</span></a>
+        </li>
+        <li class="sidebar-item" data-target="aiCoachPage">
+          <a href="#"><i class="fa-solid fa-robot text-accent"></i><span>AI Coach Hub</span></a>
+        </li>
+        <li class="sidebar-item" data-target="psychologyPage">
+          <a href="#"><i class="fa-solid fa-brain text-accent"></i><span>Psychology Hub</span></a>
+        </li>
+        <li class="sidebar-item" data-target="notesPage">
+          <a href="#"><i class="fa-solid fa-book"></i><span>Daily Log / Notes</span></a>
+        </li>
+        <li class="sidebar-item" data-target="calendarPage">
+          <a href="#"><i class="fa-solid fa-calendar-days"></i><span>Trading Calendar</span></a>
+        </li>
+        <li class="sidebar-item" data-target="settingsPage">
+          <a href="#"><i class="fa-solid fa-sliders"></i><span>Settings</span></a>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-summary">
+          <div class="user-avatar" id="avatarInitial">U</div>
+          <div class="user-info">
+            <span class="user-name" id="profileName">Guest Trader</span>
+            <span class="user-email" id="profileEmail">local_mode@journal</span>
+          </div>
+        </div>
+        <button class="btn btn-sm btn-icon btn-secondary" id="logoutBtn" title="Log Out">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN VIEW AREA -->
+    <main class="main-content">
+      
+      <!-- HEADER -->
+      <header class="app-header">
+        <div class="header-title-area">
+          <h2 id="headerTitle">Dashboard</h2>
+        </div>
+
+        <div class="header-actions">
+          <div class="form-group" style="margin-bottom: 0;">
+            <select class="input-control" id="globalAccountSelector" style="width: 220px; padding: 8px 12px;">
+              <option value="all">Combined (All Accounts)</option>
+            </select>
+          </div>
+          <button class="btn btn-primary btn-sm" id="headerQuickAddBtn">
+            <i class="fa fa-plus"></i> Quick Trade
+          </button>
+        </div>
+      </header>
+
+      <!-- ==================== VIEW 1: DASHBOARD ==================== -->
+      <div id="dashboardPage" class="page-container active">
+        <!-- Stats Cards Grid Row 1 -->
+        <div class="grid-cols-4 mb-4">
+          <div class="stat-card">
+            <i class="fa-solid fa-calendar-day stat-icon"></i>
+            <span class="stat-label">Today's P&L</span>
+            <span class="stat-value" id="statTodayPnL">$0.00</span>
+            <span class="stat-trend text-success" id="statTodayTrend"><i class="fa fa-minus"></i> 0.0%</span>
+          </div>
+          <div class="stat-card">
+            <i class="fa-solid fa-chart-line stat-icon"></i>
+            <span class="stat-label">Total Net P&L</span>
+            <span class="stat-value" id="statTotalPnL">$0.00</span>
+            <span class="stat-trend" id="statTotalTrend"><i class="fa fa-minus"></i> 0.0%</span>
+          </div>
+          <div class="stat-card">
+            <i class="fa-solid fa-scale-balanced stat-icon"></i>
+            <span class="stat-label">Account Balance</span>
+            <span class="stat-value" id="statBalance">$0.00</span>
+            <span class="stat-trend text-accent" id="statGrowthTrend"><i class="fa fa-minus"></i> 0.0% growth</span>
+          </div>
+          <div class="stat-card">
+            <i class="fa-solid fa-percent stat-icon"></i>
+            <span class="stat-label">Win Rate %</span>
+            <span class="stat-value" id="statWinRate">0.0%</span>
+            <span class="stat-trend text-muted" id="statWinLossRatio">Wins: 0 | Losses: 0</span>
+          </div>
+        </div>
+
+        <!-- Stats Cards Grid Row 2 -->
+        <div class="grid-cols-4 mb-4">
+          <div class="stat-card">
+            <i class="fa-solid fa-hashtag stat-icon"></i>
+            <span class="stat-label">Total Trades</span>
+            <span class="stat-value" id="statTotalTrades">0</span>
+            <span class="stat-trend text-muted" id="statBreakEvenCount">0 break-evens</span>
+          </div>
+          <div class="stat-card">
+            <i class="fa-solid fa-shuffle stat-icon"></i>
+            <span class="stat-label">Avg Risk Reward</span>
+            <span class="stat-value" id="statRiskReward">1:0.00</span>
+            <span class="stat-trend text-muted" id="statAvgRMultiple">Avg R-Multiple: 0.0R</span>
+          </div>
+          <div class="stat-card">
+            <i class="fa-solid fa-circle-up stat-icon text-success"></i>
+            <span class="stat-label">Best Trade</span>
+            <span class="stat-value text-success" id="statBestTrade">$0.00</span>
+            <span class="stat-trend text-muted" id="statBestTradeAsset">-</span>
+          </div>
+          <div class="stat-card">
+            <i class="fa-solid fa-circle-down stat-icon text-danger"></i>
+            <span class="stat-label">Worst Trade</span>
+            <span class="stat-value text-danger" id="statWorstTrade">$0.00</span>
+            <span class="stat-trend text-muted" id="statWorstTradeAsset">-</span>
+          </div>
+        </div>
+
+        <!-- Stats Cards Grid Row 3 (Premium Institutional Metrics) -->
+        <div class="grid-cols-4 mb-4">
+          <div class="stat-card">
+            <i class="fa-solid fa-divide stat-icon text-accent"></i>
+            <span class="stat-label">Profit Factor</span>
+            <span class="stat-value text-accent" id="statProfitFactor">0.00</span>
+            <span class="stat-trend text-muted">Gross Profit / Loss</span>
+          </div>
+          <div class="stat-card">
+            <i class="fa-solid fa-arrow-down-wide-short stat-icon text-danger"></i>
+            <span class="stat-label">Max Drawdown</span>
+            <span class="stat-value text-danger" id="statMaxDrawdown">$0.00</span>
+            <span class="stat-trend text-muted">Peak to Trough drop</span>
+          </div>
+          <div class="stat-card">
+            <i class="fa-solid fa-fire stat-icon text-warning"></i>
+            <span class="stat-label">Trading Streak</span>
+            <span class="stat-value text-warning" id="statStreak">W: 0 | L: 0</span>
+            <span class="stat-trend text-muted">Consecutive wins/losses</span>
+          </div>
+          <div class="stat-card">
+            <i class="fa-solid fa-arrow-up-right-dots stat-icon text-success"></i>
+            <span class="stat-label">Total ROI %</span>
+            <span class="stat-value text-success" id="statRoi">0.0%</span>
+            <span class="stat-trend text-muted">Return on Investment</span>
+          </div>
+        </div>
+
+        <!-- Dashboard Charts -->
+        <div class="grid-cols-12 mb-4">
+          <div class="card-premium col-span-8">
+            <div class="card-title-bar">
+              <h3><i class="fa-solid fa-chart-area"></i> Equity Curve</h3>
+              <span class="text-xs text-muted">Cumulative Account Growth</span>
+            </div>
+            <div class="chart-container-wrapper">
+              <canvas id="dashEquityChart"></canvas>
+            </div>
+          </div>
+
+          <div class="card-premium col-span-4">
+            <div class="card-title-bar">
+              <h3><i class="fa-solid fa-pie-chart"></i> Win / Loss Ratio</h3>
+              <span class="text-xs text-muted">Trade Outcomes</span>
+            </div>
+            <div class="chart-container-wrapper">
+              <canvas id="dashWinLossChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Institutional Widgets Grid (Economic Calendar & Live Clocks) -->
+        <div class="grid-cols-12 mb-4">
+          <div class="card-premium col-span-6">
+            <div class="card-title-bar">
+              <h3><i class="fa-solid fa-calendar-check"></i> High-Impact Economic Calendar</h3>
+              <span class="badge badge-loss">Live Alerts</span>
+            </div>
+            <div id="econCalendarList" class="flex flex-col gap-3" style="max-height: 240px; overflow-y: auto; padding-right: 4px;">
+              <!-- Dynamic econ news events -->
+            </div>
+          </div>
+
+          <div class="card-premium col-span-6">
+            <div class="card-title-bar">
+              <h3><i class="fa-solid fa-clock"></i> Global Session Clock</h3>
+              <span id="forexClockStatus" class="text-xs text-muted">Active Sessions</span>
+            </div>
+            <div class="grid-cols-4 gap-2 text-center mt-2">
+              <div class="p-3 rounded-xl border border-card-border" id="clockSydney" style="background: rgba(255,255,255,0.015);">
+                <div class="text-xs font-bold">Sydney</div>
+                <div class="text-xs text-muted mt-1" style="font-size: 0.65rem;">22:00 - 07:00</div>
+                <span class="badge mt-2" id="badgeSydney" style="background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.65rem; padding: 2px 6px;">Closed</span>
+              </div>
+              <div class="p-3 rounded-xl border border-card-border" id="clockTokyo" style="background: rgba(255,255,255,0.015);">
+                <div class="text-xs font-bold">Tokyo</div>
+                <div class="text-xs text-muted mt-1" style="font-size: 0.65rem;">00:00 - 09:00</div>
+                <span class="badge mt-2" id="badgeTokyo" style="background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.65rem; padding: 2px 6px;">Closed</span>
+              </div>
+              <div class="p-3 rounded-xl border border-card-border" id="clockLondon" style="background: rgba(255,255,255,0.015);">
+                <div class="text-xs font-bold">London</div>
+                <div class="text-xs text-muted mt-1" style="font-size: 0.65rem;">08:00 - 17:00</div>
+                <span class="badge mt-2" id="badgeLondon" style="background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.65rem; padding: 2px 6px;">Closed</span>
+              </div>
+              <div class="p-3 rounded-xl border border-card-border" id="clockNewYork" style="background: rgba(255,255,255,0.015);">
+                <div class="text-xs font-bold">New York</div>
+                <div class="text-xs text-muted mt-1" style="font-size: 0.65rem;">13:00 - 22:00</div>
+                <span class="badge mt-2" id="badgeNewYork" style="background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.65rem; padding: 2px 6px;">Closed</span>
+              </div>
+            </div>
+            <div class="text-xs text-muted text-center mt-4">
+              Current local time: <span id="headerLiveTime" class="font-bold text-accent">--:--:--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Coach Insights Summary on Dashboard -->
+        <div class="card-premium mb-4" id="dashAiCoachSummary">
+          <div class="card-title-bar">
+            <h3><i class="fa-solid fa-robot text-accent"></i> AI Coach's Daily Alert Summary</h3>
+            <span class="badge badge-win">Discipline Rating Active</span>
+          </div>
+          <p id="dashAiCoachMessage" class="text-sm text-light font-medium italic">
+            Scanning trades... No enough records logged to compile deep behavioral insights. Track at least 5 trades to unlock the full potential of your AI Coach.
+          </p>
+        </div>
+
+        <!-- Bottom Grid (Recent trades, Heatmap, Notes, checklists) -->
+        <div class="grid-cols-12">
+          <!-- Recent Trades -->
+          <div class="card-premium col-span-6">
+            <div class="card-title-bar">
+              <h3><i class="fa-solid fa-clock-rotate-left"></i> Recent Trades</h3>
+              <button class="btn btn-secondary btn-sm" id="dashViewAllTradesBtn">View All</button>
+            </div>
+            <div class="table-wrapper" style="max-height: 240px;">
+              <table class="table-custom" id="dashTradesTable">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Asset</th>
+                    <th>Type</th>
+                    <th>Result</th>
+                    <th>PnL</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Filled dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Heatmap & Notes -->
+          <div class="card-premium col-span-6">
+            <div class="card-title-bar">
+              <h3><i class="fa-solid fa-border-all"></i> Performance Heatmap</h3>
+              <span class="text-xs text-muted">Net Daily Profitability (Last 7 Weeks)</span>
+            </div>
+            <div id="dashHeatmap" class="heatmap-grid mb-4">
+              <!-- Filled dynamically -->
+            </div>
+            
+            <div class="grid-cols-2 mt-4">
+              <div>
+                <div class="card-title-bar" style="margin-bottom: 8px;">
+                  <h4 class="text-sm font-semibold"><i class="fa fa-clipboard-list text-accent"></i> Daily Checklist</h4>
+                </div>
+                <div id="dashChecklist" class="flex flex-col" style="max-height: 120px; overflow-y: auto;">
+                  <!-- Filled dynamically -->
+                </div>
+              </div>
+              <div>
+                <div class="card-title-bar" style="margin-bottom: 8px;">
+                  <h4 class="text-sm font-semibold"><i class="fa fa-bullseye text-warning"></i> Goals Progress</h4>
+                </div>
+                <div id="dashGoals" class="flex flex-col gap-2" style="max-height: 120px; overflow-y: auto;">
+                  <!-- Filled dynamically -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== VIEW 2: MULTI ACCOUNT MANAGEMENT ==================== -->
+      <div id="accountsPage" class="page-container">
+        <div class="grid-cols-12 mb-4">
+          <!-- Accounts Overview -->
+          <div class="card-premium col-span-8">
+            <div class="card-title-bar">
+              <h3><i class="fa-solid fa-wallet"></i> Trading Accounts</h3>
+              <button class="btn btn-primary btn-sm" id="openAddAccountModalBtn">
+                <i class="fa fa-plus"></i> New Account
+              </button>
+            </div>
+            
+            <div id="accountsGrid" class="grid-cols-2">
+              <!-- Cards populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Quick deposit / withdrawal -->
+          <div class="card-premium col-span-4">
+            <div class="card-title-bar">
+              <h3><i class="fa-solid fa-money-bill-transfer"></i> Adjust Balance</h3>
+            </div>
+            <form id="transactionForm" onsubmit="event.preventDefault();">
+              <div class="form-group mb-4">
+                <label for="txAccount">Account</label>
+                <select id="txAccount" class="input-control" required></select>
+              </div>
+              <div class="form-group mb-4">
+                <label for="txType">Transaction Type</label>
+                <select id="txType" class="input-control" required>
+                  <option value="deposit">Deposit</option>
+                  <option value="withdrawal">Withdrawal</option>
+                </select>
+              </div>
+              <div class="form-group mb-4">
+                <label for="txAmount">Amount ($)</label>
+                <input type="number" step="0.01" id="txAmount" class="input-control" placeholder="1000.00" required>
+              </div>
+              <div class="form-group mb-4">
+                <label for="txNote">Memo / Notes</label>
+                <input type="text" id="txNote" class="input-control" placeholder="Funding my account">
+              </div>
+              <button type="submit" class="btn btn-primary" style="width: 100%;">Post Transaction</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="card-premium">
+          <div class="card-title-bar">
+            <h3><i class="fa-solid fa-list-ul"></i> Transaction History</h3>
+          </div>
+          <div class="table-wrapper">
+            <table class="table-custom" id="transactionsTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Account</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Filled dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== VIEW 3: ADD/EDIT TRADE JOURNAL ENTRY ==================== -->
+      <div id="entryPage" class="page-container">
+        <div class="grid-cols-12">
+          <!-- Trade entry form -->
+          <div class="card-premium col-span-8">
+            <div class="card-title-bar">
+              <h3 id="tradeFormTitle"><i class="fa-solid fa-circle-plus"></i> Journal New Trade</h3>
+              <button class="btn btn-secondary btn-sm" id="resetTradeFormBtn">Clear Form</button>
+            </div>
+            
+            <form id="tradeForm" onsubmit="event.preventDefault();">
+              <input type="hidden" id="editTradeId" value="">
+              
+              <div class="grid-cols-3 mb-4">
+                <div class="form-group">
+                  <label for="tradeAccount">Trading Account *</label>
+                  <select id="tradeAccount" class="input-control" required></select>
+                </div>
+                <div class="form-group">
+                  <label for="tradeAsset">Asset Symbol *</label>
+                  <input type="text" id="tradeAsset" class="input-control" placeholder="EURUSD, BTC, AAPL" required>
+                </div>
+                <div class="form-group">
+                  <label>Order Type *</label>
+                  <div class="flex gap-2">
+                    <div id="typeBuy" class="toggle-btn active-buy" onclick="setTradeType('Buy')">BUY</div>
+                    <div id="typeSell" class="toggle-btn" onclick="setTradeType('Sell')">SELL</div>
+                  </div>
+                  <input type="hidden" id="tradeType" value="Buy">
+                </div>
+              </div>
+
+              <div class="grid-cols-4 mb-4">
+                <div class="form-group">
+                  <label for="tradeEntryPrice">Entry Price *</label>
+                  <input type="number" step="0.00001" id="tradeEntryPrice" class="input-control" placeholder="1.1200" required>
+                </div>
+                <div class="form-group">
+                  <label for="tradeExitPrice">Exit Price *</label>
+                  <input type="number" step="0.00001" id="tradeExitPrice" class="input-control" placeholder="1.1250" required>
+                </div>
+                <div class="form-group">
+                  <label for="tradeStopLoss">Stop Loss (SL)</label>
+                  <input type="number" step="0.00001" id="tradeStopLoss" class="input-control" placeholder="1.1180">
+                </div>
+                <div class="form-group">
+                  <label for="tradeTakeProfit">Take Profit (TP)</label>
+                  <input type="number" step="0.00001" id="tradeTakeProfit" class="input-control" placeholder="1.1280">
+                </div>
+              </div>
+
+              <div class="grid-cols-3 mb-4">
+                <div class="form-group">
+                  <label for="tradeQuantity">Quantity / Lot Size *</label>
+                  <input type="number" step="0.00001" id="tradeQuantity" class="input-control" placeholder="100000" required>
+                </div>
+                <div class="form-group">
+                  <label for="tradeCommission">Commissions ($)</label>
+                  <input type="number" step="0.01" id="tradeCommission" class="input-control" placeholder="0.00" value="0.00">
+                </div>
+                <div class="form-group">
+                  <label for="tradeSwap">Swap Fees ($)</label>
+                  <input type="number" step="0.01" id="tradeSwap" class="input-control" placeholder="0.00" value="0.00">
+                </div>
+              </div>
+
+              <div class="grid-cols-3 mb-4">
+                <div class="form-group">
+                  <label for="tradeSlippage">Slippage ($)</label>
+                  <input type="number" step="0.01" id="tradeSlippage" class="input-control" placeholder="0.00" value="0.00">
+                </div>
+                <div class="form-group">
+                  <label for="tradeRiskPct">Risk Percentage (%)</label>
+                  <input type="number" step="0.01" id="tradeRiskPct" class="input-control" placeholder="1.0">
+                </div>
+                <div class="form-group">
+                  <label for="tradeLeverage">Leverage (e.g. 30 for 1:30)</label>
+                  <input type="number" step="1" id="tradeLeverage" class="input-control" placeholder="1" value="1">
+                </div>
+              </div>
+
+              <div class="grid-cols-2 mb-4">
+                <div class="form-group">
+                  <label for="tradeDate">Date *</label>
+                  <input type="date" id="tradeDate" class="input-control" required>
+                </div>
+                <div class="form-group">
+                  <label for="tradeTime">Time</label>
+                  <input type="time" id="tradeTime" class="input-control">
+                </div>
+              </div>
+
+              <!-- Setup Classification -->
+              <div class="card-title-bar mt-4 mb-2">
+                <h4 class="text-sm font-semibold text-muted">STRATEGY & CLASSIFICATION</h4>
+              </div>
+              <div class="grid-cols-4 mb-4">
+                <div class="form-group">
+                  <label for="tradeStrategy">Strategy Tag</label>
+                  <input type="text" id="tradeStrategy" class="input-control" placeholder="Trend Following, Breakout">
+                </div>
+                <div class="form-group">
+                  <label for="tradeSetup">Setup Type</label>
+                  <input type="text" id="tradeSetup" class="input-control" placeholder="Double Bottom, Order Block">
+                </div>
+                <div class="form-group">
+                  <label for="tradeCondition">Market Condition</label>
+                  <select id="tradeCondition" class="input-control">
+                    <option value="Trending">Trending</option>
+                    <option value="Ranging">Ranging</option>
+                    <option value="Volatile">Volatile</option>
+                    <option value="Sideways">Sideways</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="tradeTimeframe">Timeframe</label>
+                  <select id="tradeTimeframe" class="input-control">
+                    <option value="1M">1 Minute</option>
+                    <option value="5M">5 Minutes</option>
+                    <option value="15M">15 Minutes</option>
+                    <option value="1H" selected>1 Hour</option>
+                    <option value="4H">4 Hours</option>
+                    <option value="1D">1 Day</option>
+                    <option value="1W">1 Week</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Psychology Tracking -->
+              <div class="card-title-bar mt-4 mb-2">
+                <h4 class="text-sm font-semibold text-muted">PSYCHOLOGY & DISCIPLINE</h4>
+              </div>
+              <div class="grid-cols-4 mb-4">
+                <div class="form-group">
+                  <label for="tradeEmotionBefore">Emotion (Before Trade)</label>
+                  <select id="tradeEmotionBefore" class="input-control">
+                    <option value="Calm">Calm</option>
+                    <option value="Anxious">Anxious</option>
+                    <option value="Excited">Excited</option>
+                    <option value="Greedy">Greedy</option>
+                    <option value="Fearful">Fearful</option>
+                    <option value="FOMO">FOMO</option>
+                    <option value="Bored">Bored</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="tradeEmotionAfter">Emotion (After Trade)</label>
+                  <select id="tradeEmotionAfter" class="input-control">
+                    <option value="Calm">Calm</option>
+                    <option value="Anxious">Anxious</option>
+                    <option value="Angry">Angry</option>
+                    <option value="Relieved">Relieved</option>
+                    <option value="Regretful">Regretful</option>
+                    <option value="Greedy">Greedy</option>
+                    <option value="Happy">Happy</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="tradeConfidence">Confidence Level (1-5)</label>
+                  <select id="tradeConfidence" class="input-control">
+                    <option value="1">1 - Very Low</option>
+                    <option value="2">2 - Low</option>
+                    <option value="3" selected>3 - Moderate</option>
+                    <option value="4">4 - High</option>
+                    <option value="5">5 - Very High</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="tradeDiscipline">Discipline Rating (1-5)</label>
+                  <select id="tradeDiscipline" class="input-control">
+                    <option value="1">1 - Broke rules</option>
+                    <option value="2">2 - Heavy deviations</option>
+                    <option value="3">3 - Light deviation</option>
+                    <option value="4">4 - Followed plan</option>
+                    <option value="5" selected>5 - Perfect execution</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Notes, Mistakes, Lessons, Screenshots -->
+              <div class="card-title-bar mt-4 mb-2">
+                <h4 class="text-sm font-semibold text-muted">NOTES, IMAGES & REVIEW</h4>
+              </div>
+              <div class="form-group mb-4">
+                <label for="tradeNotes">Detailed Journal Notes</label>
+                <textarea id="tradeNotes" class="input-control" rows="4" placeholder="Enter market context, why did you take this trade? How did it feel?"></textarea>
+              </div>
+
+              <div class="grid-cols-2 mb-4">
+                <div class="form-group">
+                  <label>Mistakes Committed</label>
+                  <div class="flex flex-col gap-2 p-3 bg-card-hover rounded-xl border border-card-border" style="max-height: 150px; overflow-y: auto;">
+                    <label class="flex align-center gap-2"><input type="checkbox" name="mistakesCheck" value="FOMO Entry"> FOMO Entry</label>
+                    <label class="flex align-center gap-2"><input type="checkbox" name="mistakesCheck" value="Chasing Price"> Chasing Price</label>
+                    <label class="flex align-center gap-2"><input type="checkbox" name="mistakesCheck" value="Moved Stop Loss"> Moved Stop Loss</label>
+                    <label class="flex align-center gap-2"><input type="checkbox" name="mistakesCheck" value="Too Large Lot Size"> Too Large Lot Size</label>
+                    <label class="flex align-center gap-2"><input type="checkbox" name="mistakesCheck" value="Overtrading"> Overtrading</label>
+                    <label class="flex align-center gap-2"><input type="checkbox" name="mistakesCheck" value="Early Exit"> Early Exit</label>
+                    <label class="flex align-center gap-2"><input type="checkbox" name="mistakesCheck" value="Trading Against Trend"> Trading Against Trend</label>
+                    <label class="flex align-center gap-2"><input type="checkbox" name="mistakesCheck" value="No Plan Execution"> No Plan Execution</label>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="tradeLessons">Lessons Learned</label>
+                  <textarea id="tradeLessons" class="input-control" rows="6" placeholder="What is the major takeaway from this trade?"></textarea>
+                </div>
+              </div>
+
+              <div class="form-group mb-4">
+                <label>Trade Screenshot</label>
+                <div class="screenshot-upload-area" id="dropZone">
+                  <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2rem; color: var(--primary); margin-bottom: 8px;"></i>
+                  <p class="text-sm font-semibold">Click to upload or Drag & Drop screenshot</p>
+                  <p class="text-xs text-muted mt-1">Supports PNG, JPG, JPEG. Max size 2MB</p>
+                  <input type="file" id="tradeScreenshot" style="display: none;" accept="image/*">
+                </div>
+                <div class="screenshot-preview-container" id="screenshotPreviewWrapper">
+                  <img id="screenshotPreview" src="" alt="Trade Screenshot Preview">
+                  <button type="button" class="screenshot-remove-btn" id="removeScreenshotBtn"><i class="fa fa-times"></i></button>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-lg mt-4" style="width: 100%;" id="saveTradeSubmitBtn">
+                <i class="fa fa-save"></i> Save Trade Entry
+              </button>
+            </form>
+          </div>
+
+          <!-- Position Size Calculator Sidebar -->
+          <div class="col-span-4 flex flex-col gap-4">
+            <div class="card-premium">
+              <div class="card-title-bar">
+                <h3><i class="fa-solid fa-calculator text-accent"></i> Position Size Calculator</h3>
+              </div>
+              <div class="flex flex-col gap-4">
+                <div class="form-group">
+                  <label for="calcBalance">Account Balance ($)</label>
+                  <input type="number" id="calcBalance" class="input-control" value="10000">
+                </div>
+                <div class="form-group">
+                  <label for="calcRisk">Risk %</label>
+                  <input type="number" id="calcRisk" class="input-control" value="1" step="0.1">
+                </div>
+                <div class="form-group">
+                  <label for="calcStopLoss">Stop Loss Size (Pips/Points)</label>
+                  <input type="number" id="calcStopLoss" class="input-control" value="20">
+                </div>
+                <div class="form-group">
+                  <label for="calcPipVal">Pip/Point Value ($ per Lot/Contract)</label>
+                  <input type="number" id="calcPipVal" class="input-control" value="10" placeholder="e.g. 10 for Standard Forex lot">
+                </div>
+                
+                <button class="btn btn-secondary" onclick="calculatePositionSize()">Calculate Size</button>
+                
+                <div class="calc-box mt-2 flex flex-col gap-2">
+                  <div class="flex justify-between text-sm">
+                    <span class="text-muted">Total Amount at Risk:</span>
+                    <span class="font-bold text-danger" id="calcRiskAmount">$100.00</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-muted">Calculated Position Size:</span>
+                    <span class="font-bold text-success" id="calcPositionSize">0.50 Lots</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Trade Rules / Checklist -->
+            <div class="card-premium">
+              <div class="card-title-bar">
+                <h3><i class="fa-solid fa-square-check text-success"></i> Trading Checklist</h3>
+                <span class="text-xs text-muted">Auto-saves state</span>
+              </div>
+              <div id="entryChecklist" class="flex flex-col">
+                <!-- Checklist content -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== VIEW 4: TRADE HISTORY ==================== -->
+      <div id="historyPage" class="page-container">
+        <!-- Filter Bar -->
+        <div class="card-premium mb-4 p-4">
+          <div class="flex align-center justify-between gap-4 flex-wrap">
+            <div class="flex align-center gap-4 flex-wrap" style="flex-grow: 1;">
+              <input type="text" id="filterSearch" class="input-control" placeholder="Search by asset, strategy..." style="width: 200px;">
+              
+              <select id="filterAccount" class="input-control" style="width: 140px;">
+                <option value="all">All Accounts</option>
+              </select>
+
+              <select id="filterResult" class="input-control" style="width: 130px;">
+                <option value="all">All Results</option>
+                <option value="Win">Wins Only</option>
+                <option value="Loss">Losses Only</option>
+                <option value="Break-even">Break-even Only</option>
+              </select>
+
+              <select id="filterStrategy" class="input-control" style="width: 140px;">
+                <option value="all">All Strategies</option>
+              </select>
+
+              <select id="filterTimeframe" class="input-control" style="width: 130px;">
+                <option value="all">All Timeframes</option>
+                <option value="1M">1 Minute</option>
+                <option value="5M">5 Minutes</option>
+                <option value="15M">15 Minutes</option>
+                <option value="1H">1 Hour</option>
+                <option value="4H">4 Hours</option>
+                <option value="1D">1 Day</option>
+              </select>
+            </div>
+
+            <div class="flex align-center gap-2">
+              <span class="text-xs text-muted mr-2">VIEW MODE</span>
+              <div class="history-toggle-container">
+                <button class="history-toggle-btn active" id="viewModeTable"><i class="fa fa-table"></i> Table</button>
+                <button class="history-toggle-btn" id="viewModeCard"><i class="fa fa-th-large"></i> Cards</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table View -->
+        <div class="card-premium" id="historyTableView">
+          <div class="table-wrapper">
+            <table class="table-custom" id="historyTable">
+              <thead>
+                <tr>
+                  <th>Date/Time</th>
+                  <th>Account</th>
+                  <th>Asset</th>
+                  <th>Type</th>
+                  <th>Entry</th>
+                  <th>Exit</th>
+                  <th>Quantity</th>
+                  <th>Result</th>
+                  <th>PnL</th>
+                  <th>R-Mult</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Filled dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Card View -->
+        <div class="cards-view-grid" id="historyCardView" style="display: none;">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- ==================== VIEW 5: ADVANCED ANALYTICS & REPORTS ==================== -->
+      <div id="analyticsPage" class="page-container">
+        <!-- Top Stats Row -->
+        <div class="grid-cols-4 mb-4">
+          <div class="stat-card">
+            <span class="stat-label">Profit Factor</span>
+            <span class="stat-value text-accent" id="reportProfitFactor">0.00</span>
+            <span class="stat-trend text-muted">Gross Profit / Gross Loss</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Average Win / Loss</span>
+            <span class="stat-value" id="reportAvgWinLoss">+$0.00 / -$0.00</span>
+            <span class="stat-trend text-muted" id="reportAvgWinLossRatio">Ratio: 0.00</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Max Drawdown</span>
+            <span class="stat-value text-danger" id="reportMaxDrawdown">$0.00</span>
+            <span class="stat-trend text-muted">Peak to trough decline</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Streak Stats</span>
+            <span class="stat-value text-success" id="reportStreaks">W: 0 | L: 0</span>
+            <span class="stat-trend text-muted">Max consecutive W & L</span>
+          </div>
+        </div>
+
+        <div class="grid-cols-3 mb-4">
+          <div class="stat-card">
+            <span class="stat-label">Best Trading Day</span>
+            <span class="stat-value text-success" id="reportBestDay">-</span>
+            <span class="stat-trend text-muted" id="reportBestDayAmount">+$0.00</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Worst Trading Day</span>
+            <span class="stat-value text-danger" id="reportWorstDay">-</span>
+            <span class="stat-trend text-muted" id="reportWorstDayAmount">-$0.00</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Most Profitable Strategy</span>
+            <span class="stat-value text-accent" id="reportBestStrategy">-</span>
+            <span class="stat-trend text-muted" id="reportBestStrategyAmount">+$0.00 total</span>
+          </div>
+        </div>
+
+        <!-- Institutional Analytics section -->
+        <div class="card-title-bar mt-4 mb-2">
+          <h3 class="text-base font-semibold text-accent" style="margin-bottom: 0;"><i class="fa fa-chart-line"></i> Institutional Simulation & Risk Analysis</h3>
+        </div>
+        <div class="grid-cols-12 mb-4">
+          <!-- Monte Carlo -->
+          <div class="card-premium col-span-8">
+            <div class="card-title-bar">
+              <div>
+                <h3><i class="fa-solid fa-wand-magic-sparkles text-accent"></i> Monte Carlo Growth Simulation</h3>
+                <span class="text-xs text-muted">Future equity projection (30 trades out)</span>
+              </div>
+              <button class="btn btn-secondary btn-sm" id="runMonteCarloBtn"><i class="fa fa-play"></i> Re-Run Path Simulation</button>
+            </div>
+            <div class="chart-container-wrapper" style="height: 320px;">
+              <canvas id="chartMonteCarlo"></canvas>
+            </div>
+            <p class="text-xs text-muted mt-2" style="font-size: 0.72rem;">
+              Simulates 50 randomized future equity paths based on historical expectancy (Win Rate, Average Win, Average Loss) with uniform standard variance modeling.
+            </p>
+          </div>
+          <!-- Portfolio Allocation doughnut -->
+          <div class="card-premium col-span-4">
+            <div class="card-title-bar">
+              <h3><i class="fa-solid fa-chart-pie text-accent"></i> Portfolio Allocation</h3>
+            </div>
+            <div class="chart-container-wrapper" style="height: 320px;">
+              <canvas id="chartPortfolioAllocation"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-cols-12 mb-4">
+          <!-- Drawdown Curve -->
+          <div class="card-premium col-span-6">
+            <div class="card-title-bar">
+              <h3><i class="fa-solid fa-chart-line text-danger"></i> Peak-to-Trough Drawdown % Curve</h3>
+            </div>
+            <div class="chart-container-wrapper">
+              <canvas id="chartDrawdownCurve"></canvas>
+            </div>
+          </div>
+          <!-- Hourly Profitability -->
+          <div class="card-premium col-span-6">
+            <div class="card-title-bar">
+              <h3><i class="fa-solid fa-clock text-accent"></i> Profit/Loss by Hour</h3>
+            </div>
+            <div class="chart-container-wrapper">
+              <canvas id="chartHourlyPnL"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Day of week profitability -->
+        <div class="card-premium mb-4">
+          <div class="card-title-bar">
+            <h3><i class="fa-solid fa-calendar-day text-accent"></i> Day-of-Week Net Performance</h3>
+          </div>
+          <div class="chart-container-wrapper">
+            <canvas id="chartDayOfWeekPnL"></canvas>
+          </div>
+        </div>
+
+        <!-- Exports Actions -->
+        <div class="card-premium">
+          <div class="card-title-bar">
+            <h3><i class="fa-solid fa-download"></i> Export Data & Reports</h3>
+            <span class="text-xs text-muted">Export options for tax tracking and presentation</span>
+          </div>
+          <div class="flex gap-4">
+            <button class="btn btn-secondary" id="exportCsvBtn">
+              <i class="fa-solid fa-file-csv"></i> Export Trades to CSV
+            </button>
+            <button class="btn btn-secondary" id="exportPdfBtn">
+              <i class="fa-solid fa-file-pdf"></i> Save PDF Summary Report
+            </button>
+            <button class="btn btn-primary" onclick="window.print()">
+              <i class="fa-solid fa-print"></i> Print Journal Sheet
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== VIEW 6: NOTES & JOURNAL SYSTEM ==================== -->
+      <div id="notesPage" class="page-container">
+        <div class="grid-cols-12">
+          <!-- Daily notes log + editor -->
+          <div class="card-premium col-span-4">
+            <div class="card-title-bar">
+              <h3 id="noteFormTitle"><i class="fa-solid fa-pen-nib"></i> Daily Journal Entry</h3>
+              <button class="btn btn-secondary btn-sm" id="clearNoteFormBtn">New Note</button>
+            </div>
+            
+            <form id="noteForm" onsubmit="event.preventDefault();">
+              <input type="hidden" id="editNoteId" value="">
+              
+              <div class="form-group mb-4">
+                <label for="noteDate">Date</label>
+                <input type="date" id="noteDate" class="input-control" required>
+              </div>
+              <div class="form-group mb-4">
+                <label for="noteTitle">Entry Title</label>
+                <input type="text" id="noteTitle" class="input-control" placeholder="Market Wrap Up, Pre-market routine" required>
+              </div>
+              <div class="form-group mb-4">
+                <label for="noteCategory">Category</label>
+                <select id="noteCategory" class="input-control">
+                  <option value="Daily Review">Daily Review</option>
+                  <option value="Psychology">Psychology Notes</option>
+                  <option value="Strategy">Strategy Notes</option>
+                  <option value="Mistake Tracking">Mistake Review</option>
+                  <option value="Lessons Learned">Lessons Learned</option>
+                </select>
+              </div>
+              <div class="form-group mb-4">
+                <label for="noteContent">Journal Narrative</label>
+                <textarea id="noteContent" class="input-control" rows="6" placeholder="Describe the day's market behavior, your discipline levels, emotional triggers..." required></textarea>
+              </div>
+              <div class="form-group mb-4">
+                <label for="noteTags">Tags (comma-separated)</label>
+                <input type="text" id="noteTags" class="input-control" placeholder="foomentry, trendchange, nfpday">
+              </div>
+
+              <button type="submit" class="btn btn-primary" style="width: 100%;">
+                <i class="fa fa-save"></i> Save Journal Entry
+              </button>
+            </form>
+          </div>
+
+          <!-- Notes list / Timeline view -->
+          <div class="card-premium col-span-8">
+            <div class="card-title-bar">
+              <h3><i class="fa-solid fa-timeline"></i> Journal Timeline</h3>
+              <div class="flex gap-2">
+                <input type="text" id="searchNotes" class="input-control" placeholder="Search notes..." style="width: 160px;">
+                <select id="filterNotesCategory" class="input-control" style="width: 150px;">
+                  <option value="all">All Categories</option>
+                  <option value="Daily Review">Daily Review</option>
+                  <option value="Psychology">Psychology</option>
+                  <option value="Strategy">Strategy</option>
+                  <option value="Mistake Tracking">Mistake Tracking</option>
+                  <option value="Lessons Learned">Lessons Learned</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="notesTimeline" class="flex flex-col gap-4" style="max-height: 560px; overflow-y: auto; padding-right: 8px;">
+              <!-- POPULATED DYNAMICALLY -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== VIEW 7: CALENDAR SYSTEM ==================== -->
+      <div id="calendarPage" class="page-container">
+        <div class="card-premium">
+          <div class="card-title-bar">
+            <h3><i class="fa-solid fa-calendar"></i> Trading Calendar</h3>
+            <span class="text-xs text-muted">Interactive daily profit & loss matrix</span>
+          </div>
+          
+          <div id="calendarContainer" class="p-3">
+            <!-- RENDERED BY calendar.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== VIEW 8: SETTINGS ==================== -->
+      <div id="settingsPage" class="page-container">
+        <div class="grid-cols-2">
+          <!-- Profile Card -->
+          <div class="card-premium">
+            <div class="card-title-bar">
+              <h3><i class="fa-solid fa-user-gear"></i> User Profile Settings</h3>
+            </div>
+            <form id="profileForm" onsubmit="event.preventDefault();">
+              <div class="form-group mb-4">
+                <label for="profileInputName">Display Name</label>
+                <input type="text" id="profileInputName" class="input-control" placeholder="Guest Trader" required>
+              </div>
+              <div class="form-group mb-4">
+                <label for="profileInputEmail">Email Address</label>
+                <input type="email" id="profileInputEmail" class="input-control" disabled>
+                <span class="text-xs text-muted">Email cannot be changed directly in local storage mode.</span>
+              </div>
+              
+              <button type="submit" class="btn btn-primary">Update Profile</button>
+            </form>
+          </div>
+
+          <!-- Application Database & Backup -->
+          <div class="card-premium flex flex-col justify-between">
+            <div>
+              <div class="card-title-bar">
+                <h3><i class="fa-solid fa-database"></i> Database & Local Backup</h3>
+              </div>
+              <p class="text-sm text-muted mb-4">
+                You are currently running in <span class="font-semibold text-success" id="connectionModeText">LocalStorage Sandbox Mode</span>. 
+                All data is saved locally in this browser. To keep data safe, you can export a local backup or connect to Firebase.
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-3">
+              <div class="flex gap-2">
+                <button class="btn btn-secondary" id="settingsExportBackupBtn" style="flex: 1;">
+                  <i class="fa fa-download"></i> Export JSON Backup
+                </button>
+                <label class="btn btn-secondary" style="flex: 1; text-align: center;">
+                  <i class="fa fa-upload"></i> Import JSON Backup
+                  <input type="file" id="settingsImportBackupFile" style="display: none;" accept=".json">
+                </label>
+              </div>
+              <button class="btn btn-danger" id="resetAllDataBtn">
+                <i class="fa-solid fa-trash-can"></i> Reset & Clear All Local Data
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-premium mt-4">
+          <div class="card-title-bar">
+            <h3><i class="fa-solid fa-paint-brush"></i> UI Appearance Skins & Themes</h3>
+            <span class="text-xs text-muted">Toggle your trading terminal color palette</span>
+          </div>
+          <div class="grid-cols-4 gap-4" id="themeSelectorContainer">
+            <button class="btn btn-secondary active-theme" id="btnThemeNavy" style="border-left: 4px solid #6366f1; justify-content: flex-start; text-align: left; padding: 12px 16px;">
+              <i class="fa fa-circle text-accent"></i> TradingView Navy
+            </button>
+            <button class="btn btn-secondary" id="btnThemeEmerald" style="border-left: 4px solid #10b981; justify-content: flex-start; text-align: left; padding: 12px 16px;">
+              <i class="fa fa-circle text-success"></i> Emerald Forest
+            </button>
+            <button class="btn btn-secondary" id="btnThemeCyberpunk" style="border-left: 4px solid #f59e0b; justify-content: flex-start; text-align: left; padding: 12px 16px;">
+              <i class="fa fa-circle text-warning"></i> Cyberpunk Neon
+            </button>
+            <button class="btn btn-secondary" id="btnThemeAmethyst" style="border-left: 4px solid #a855f7; justify-content: flex-start; text-align: left; padding: 12px 16px;">
+              <i class="fa fa-circle text-accent"></i> Amethyst Void
+            </button>
+          </div>
+        </div>
+
+        <div class="card-premium mt-4">
+          <div class="card-title-bar">
+            <h3><i class="fa-solid fa-cloud-arrow-up"></i> Firebase Authentication Sync</h3>
+          </div>
+          <p class="text-sm text-muted mb-4">
+            Connect your local journal to our Firebase Cloud database to keep multiple devices synced automatically and store files safely.
+          </p>
+          <div class="flex align-center gap-4 flex-wrap">
+            <div id="firebaseConnectionBadge" class="badge badge-loss">Firebase Offline</div>
+            <button class="btn btn-primary" id="openAuthModalBtn">Sign Up / Log In with Firebase</button>
+            <button class="btn btn-secondary" id="googleLoginBtn" style="background:#ea4335; border:none; color:white;"><i class="fa-brands fa-google"></i> Google Login</button>
+            <button class="btn btn-secondary" id="syncFirebaseBtn" style="display:none;"><i class="fa fa-sync"></i> Sync Data Now</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ==================== MODALS & POPUPS ==================== -->
+
+  <!-- MODAL: ADD/EDIT ACCOUNT -->
+  <div class="modal-overlay" id="accountModal">
+    <div class="modal-content" style="max-width: 450px;">
+      <div class="modal-header">
+        <h3>Create Trading Account</h3>
+        <button class="btn btn-sm btn-icon btn-secondary" onclick="closeModal('accountModal')"><i class="fa fa-times"></i></button>
+      </div>
+      <form id="accountForm" onsubmit="event.preventDefault();">
+        <input type="hidden" id="editAccountId" value="">
+        <div class="modal-body flex flex-col gap-4">
+          <div class="form-group">
+            <label for="accName">Account Name *</label>
+            <input type="text" id="accName" class="input-control" placeholder="Oanda Live Forex, Binance Crypto" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="accType">Account Type *</label>
+            <select id="accType" class="input-control" required>
+              <option value="Forex">Forex</option>
+              <option value="Crypto">Crypto</option>
+              <option value="Stocks">Stocks</option>
+              <option value="Futures">Futures</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="accBalance">Initial Balance ($) *</label>
+            <input type="number" step="0.01" id="accBalance" class="input-control" placeholder="10000.00" required>
+          </div>
+
+          <div class="form-group">
+            <label for="accCurrency">Currency</label>
+            <select id="accCurrency" class="input-control">
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="GBP">GBP (£)</option>
+              <option value="INR">INR (₹)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('accountModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: VIEW TRADE DETAILS -->
+  <div class="modal-overlay" id="tradeDetailsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="detailHeaderTitle">Trade Details: AAPL Buy</h3>
+        <div class="flex gap-2">
+          <button class="btn btn-sm btn-secondary" id="detailEditBtn"><i class="fa fa-edit"></i> Edit</button>
+          <button class="btn btn-sm btn-icon btn-secondary" onclick="closeModal('tradeDetailsModal')"><i class="fa fa-times"></i></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="grid-cols-3 mb-4 p-3 bg-card-hover rounded-xl border border-card-border">
+          <div class="flex flex-col">
+            <span class="text-xs text-muted">RESULT</span>
+            <span id="detailResultBadge" class="badge mt-1" style="width: fit-content;">Win</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-xs text-muted">NET PROFIT / LOSS</span>
+            <span id="detailPnl" class="text-lg font-bold text-success">+$250.00</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-xs text-muted">RISK REWARD (R)</span>
+            <span id="detailRMultiple" class="text-lg font-bold text-accent">+2.5R</span>
+          </div>
+        </div>
+
+        <div class="grid-cols-2 mb-4">
+          <div class="flex flex-col gap-2">
+            <h4 class="text-sm font-semibold text-accent border-bottom pb-1" style="border-bottom:1px solid var(--card-border);">Execution Settings</h4>
+            <div class="flex justify-between text-sm"><span class="text-muted">Account:</span> <span id="detailAccount" class="font-semibold">-</span></div>
+            <div class="flex justify-between text-sm"><span class="text-muted">Direction:</span> <span id="detailDirection" class="font-semibold">-</span></div>
+            <div class="flex justify-between text-sm"><span class="text-muted">Asset:</span> <span id="detailAsset" class="font-semibold">-</span></div>
+            <div class="flex justify-between text-sm"><span class="text-muted">Quantity:</span> <span id="detailQuantity" class="font-semibold">-</span></div>
+            <div class="flex justify-between text-sm"><span class="text-muted">Entry Price:</span> <span id="detailEntryPrice" class="font-semibold">-</span></div>
+            <div class="flex justify-between text-sm"><span class="text-muted">Exit Price:</span> <span id="detailExitPrice" class="font-semibold">-</span></div>
+            <div class="flex justify-between text-sm"><span class="text-muted">Stop Loss (SL):</span> <span id="detailStopLoss" class="font-semibold">-</span></div>
+            <div class="flex justify-between text-sm"><span class="text-muted">Take Profit (TP):</span> <span id="detailTakeProfit" class="font-semibold">-</span></div>
+            <div class="flex justify-between text-sm"><span class="text-muted">Commissions / Swaps:</span> <span id="detailFees" class="font-semibold">-</span></div>
+          </div>
+          
+          <div class="flex flex-col gap-2">
+            <h4 class="text-sm font-semibold text-accent border-bottom pb-1" style="border-bottom:1px solid var(--card-border);">Strategy & Review</h4>
+            <div class="flex justify-between text-sm"><span class="text-muted">Strategy:</span> <span id="detailStrategy" class="font-semibold">-</span></div>
+            <div class="flex justify-between text-sm"><span class="text-muted">Setup:</span> <span id="detailSetup" class="font-semibold">-</span></div>
+            <div class="flex justify-between text-sm"><span class="text-muted">Market State:</span> <span id="detailMarket" class="font-semibold">-</span></div>
+            <div class="flex justify-between text-sm"><span class="text-muted">Timeframe:</span> <span id="detailTimeframe" class="font-semibold">-</span></div>
+            <div class="flex justify-between text-sm"><span class="text-muted">Emotion Before:</span> <span id="detailEmotionBefore" class="font-semibold">-</span></div>
+            <div class="flex justify-between text-sm"><span class="text-muted">Emotion After:</span> <span id="detailEmotionAfter" class="font-semibold">-</span></div>
+            <div class="flex justify-between text-sm"><span class="text-muted">Confidence / Discipline:</span> <span id="detailRatings" class="font-semibold">-</span></div>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2 mb-4">
+          <h4 class="text-sm font-semibold text-accent border-bottom pb-1" style="border-bottom:1px solid var(--card-border);">Journal Narrative</h4>
+          <p id="detailNotes" class="text-sm text-light p-3 bg-card-hover rounded-xl border border-card-border" style="white-space: pre-line;">-</p>
+        </div>
+
+        <div class="grid-cols-2 mb-4">
+          <div class="flex flex-col gap-2">
+            <h4 class="text-sm font-semibold text-danger border-bottom pb-1" style="border-bottom:1px solid var(--card-border);">Mistakes Identified</h4>
+            <div id="detailMistakes" class="flex flex-wrap gap-1">
+              <!-- Mistakes tags -->
+            </div>
+          </div>
+          <div class="flex flex-col gap-2">
+            <h4 class="text-sm font-semibold text-success border-bottom pb-1" style="border-bottom:1px solid var(--card-border);">Takeaway Lessons</h4>
+            <p id="detailLessons" class="text-sm text-light p-3 bg-card-hover rounded-xl border border-card-border" style="white-space: pre-line;">-</p>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2" id="detailScreenshotSection">
+          <h4 class="text-sm font-semibold text-accent border-bottom pb-1" style="border-bottom:1px solid var(--card-border);">Trade Screenshot</h4>
+          <div class="screenshot-preview-container" style="display:block;">
+            <img id="detailScreenshotImg" src="" alt="Trade Screenshot Image">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger mr-auto" id="detailDeleteBtn"><i class="fa fa-trash"></i> Delete Trade</button>
+        <button class="btn btn-secondary" onclick="closeModal('tradeDetailsModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CALENDAR DAY TRADES LIST -->
+  <div class="modal-overlay" id="calendarDayModal">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 id="calendarDayModalTitle">Trades for 2026-05-22</h3>
+        <button class="btn btn-sm btn-icon btn-secondary" onclick="closeModal('calendarDayModal')"><i class="fa fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-wrapper">
+          <table class="table-custom" id="calendarDayTable">
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th>Type</th>
+                <th>Result</th>
+                <th>PnL</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('calendarDayModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== VIEW 9: AI COACH HUB ==================== -->
+  <div id="aiCoachPage" class="page-container">
+    <div class="grid-cols-12 mb-4">
+      <div class="card-premium col-span-8">
+        <div class="card-title-bar">
+          <h3><i class="fa-solid fa-robot text-accent"></i> APEX AI Trading Coach</h3>
+          <span class="badge badge-win">System Online</span>
+        </div>
+        
+        <div class="ai-chat-container flex flex-col gap-4 p-4 rounded-xl border border-card-border" style="background: rgba(255,255,255,0.015); height: 400px; overflow-y: auto;" id="aiChatBox">
+          <div class="ai-msg ai-msg-bot flex gap-2">
+            <div class="ai-avatar" style="width: 32px; height: 32px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; color:white; font-size:12px; flex-shrink:0;"><i class="fa fa-robot"></i></div>
+            <div class="ai-msg-bubble p-3 rounded-xl text-sm text-light border border-card-border" style="background:var(--bg-card-hover); max-width: 80%;">
+              Hello! I am your institutional AI Trading Coach. I scan your trading database in real-time to analyze risk parameters, identify psychological patterns, detect revenge trading, and suggest optimization strategies.
+              <br><br>
+              Ask me anything like: <strong>"Do I have a revenge trading habit?"</strong>, <strong>"What is my best strategy and session?"</strong>, or <strong>"How can I improve my discipline score?"</strong>.
+            </div>
+          </div>
+        </div>
+        
+        <form class="flex gap-2 mt-4" id="aiChatForm" onsubmit="event.preventDefault();">
+          <input type="text" id="aiChatInput" class="input-control" placeholder="Ask your AI coach a question..." style="flex:1;">
+          <button class="btn btn-primary" type="submit" id="aiChatSendBtn"><i class="fa fa-paper-plane"></i> Query</button>
+        </form>
+      </div>
+
+      <div class="card-premium col-span-4 flex flex-col justify-between">
+        <div>
+          <div class="card-title-bar">
+            <h3><i class="fa-solid fa-lightbulb text-warning"></i> AI Coach Dashboard</h3>
+            <span class="text-xs text-muted">Behavioral Audit</span>
+          </div>
+          <div class="flex flex-col gap-3" id="aiInsightsPanel">
+            <!-- Dynamic AI suggestions -->
+            <div class="text-xs text-muted py-2">Analyzing trades... Add more records to trigger deeper risk metrics.</div>
+          </div>
+        </div>
+        
+        <div class="mt-4 p-3 bg-primary-glow border border-card-border rounded-xl text-xs text-light" style="font-size: 0.72rem;">
+          <i class="fa fa-info-circle text-accent mr-1"></i> These insights update in real-time as you execute trades. Use them to enforce strict position management thresholds.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== VIEW 10: PSYCHOLOGY HUB ==================== -->
+  <div id="psychologyPage" class="page-container">
+    <div class="grid-cols-4 mb-4">
+      <div class="stat-card">
+        <i class="fa-solid fa-head-side-virus stat-icon"></i>
+        <span class="stat-label">Emotional Consistency</span>
+        <span class="stat-value text-success" id="psyConsistency">0.0%</span>
+        <span class="stat-trend text-muted" id="psyConsistencyLabel">Calm Wins vs Emotional Losses</span>
+      </div>
+      <div class="stat-card">
+        <i class="fa-solid fa-square-poll-vertical stat-icon"></i>
+        <span class="stat-label">Discipline Score</span>
+        <span class="stat-value text-accent" id="psyDiscipline">0.0/5</span>
+        <span class="stat-trend text-muted" id="psyDisciplineLabel">Avg trade plan rating</span>
+      </div>
+      <div class="stat-card">
+        <i class="fa-solid fa-triangle-exclamation stat-icon"></i>
+        <span class="stat-label">Mistake Prevalence</span>
+        <span class="stat-value text-danger" id="psyMistakes">0%</span>
+        <span class="stat-trend text-muted" id="psyMistakesLabel">Trades with errors</span>
+      </div>
+      <div class="stat-card">
+        <i class="fa-solid fa-face-smile stat-icon"></i>
+        <span class="stat-label">Emotional Peak</span>
+        <span class="stat-value text-warning" id="psyPeak">Calm</span>
+        <span class="stat-trend text-muted" id="psyPeakLabel">Most frequent entry state</span>
+      </div>
+    </div>
+
+    <div class="grid-cols-12 mb-4">
+      <!-- Psychology score graph -->
+      <div class="card-premium col-span-8">
+        <div class="card-title-bar">
+          <h3><i class="fa-solid fa-brain text-accent"></i> Mindset & Discipline Metrics</h3>
+          <span class="text-xs text-muted">Confidence vs Execution Rating over last 20 trades</span>
+        </div>
+        <div class="chart-container-wrapper" style="height: 320px;">
+          <canvas id="chartPsychologyScore"></canvas>
+        </div>
+      </div>
+      <!-- Emotional outcomes stats -->
+      <div class="card-premium col-span-4">
+        <div class="card-title-bar">
+          <h3><i class="fa-solid fa-smile-beam"></i> Emotion Correlator</h3>
+          <span class="text-xs text-muted">Win Rates by Mood</span>
+        </div>
+        <div class="table-wrapper" style="height: 320px; overflow-y: auto;">
+          <table class="table-custom" id="psyEmotionTable">
+            <thead>
+              <tr>
+                <th>Emotion</th>
+                <th>Trades</th>
+                <th>Win %</th>
+                <th>Net PnL</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-cols-12">
+      <!-- Behavioral warning tracker -->
+      <div class="card-premium col-span-6">
+        <div class="card-title-bar">
+          <h3><i class="fa-solid fa-triangle-exclamation text-danger"></i> Discipline & Rules Breach Log</h3>
+          <span class="badge badge-loss" id="psyBreachCount">0 Breaches</span>
+        </div>
+        <div class="flex flex-col gap-3" id="psyBreachesLog" style="max-height: 250px; overflow-y: auto; padding-right: 4px;">
+          <!-- Dynamically populated list of bad habits / rule breaks -->
+          <div class="text-xs text-muted">No rules violations registered. Clean record!</div>
+        </div>
+      </div>
+      <!-- Lessons log -->
+      <div class="card-premium col-span-6">
+        <div class="card-title-bar">
+          <h3><i class="fa-solid fa-graduation-cap text-success"></i> Key Journal Takeaways</h3>
+        </div>
+        <div class="flex flex-col gap-3" id="psyLessonsList" style="max-height: 250px; overflow-y: auto; padding-right: 4px;">
+          <!-- Dynamic lessons bullet points -->
+          <div class="text-xs text-muted">Write detailed lessons learned inside trade forms to view highlights.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Floating trigger bubble -->
+  <button class="floating-trigger-bubble" id="floatingTriggerBubble" title="Open AI Trading Assistant">
+    <i class="fa fa-robot"></i>
+    <span class="pulse-ring"></span>
+  </button>
+
+  <!-- ==================== NOTIFICATION BANNER ==================== -->
+  <div id="notificationBanner" class="notification-banner">
+    <i id="notificationIcon" class="fa fa-info-circle"></i>
+    <span id="notificationMessage">Action completed successfully.</span>
+  </div>
+
+  <!-- App scripts module loads -->
+  <script type="module" src="../js/app.js"></script>
+
+
+</body>
+</html>
