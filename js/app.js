@@ -15,6 +15,7 @@ import {
   getAccounts,
   saveAccount,
   deleteAccount,
+  archiveAccount,
   getTrades,
   saveTrade,
   deleteTrade,
@@ -28,7 +29,11 @@ import {
   saveChecklist,
   exportData,
   importData,
-  syncLocalDataToFirestore
+  syncLocalDataToFirestore,
+  getFirebaseLogs,
+  clearFirebaseLogs,
+  pushLocalToFirebase,
+  pullFirebaseToLocal
 } from "./storage.js";
 
 import {
@@ -63,7 +68,10 @@ let state = {
   goals: [],
   checklist: [],
   currentTab: "dashboardPage",
-  activeTradeType: "Buy"
+  activeTradeType: "Buy",
+  dateFrom: "",
+  dateTo: "",
+  showArchived: false
 };
 
 // --- DOM ELEMENTS REFERENCE ---
@@ -315,7 +323,17 @@ const els = {
   
   notificationBanner: document.getElementById("notificationBanner"),
   notificationIcon: document.getElementById("notificationIcon"),
-  notificationMessage: document.getElementById("notificationMessage")
+  notificationMessage: document.getElementById("notificationMessage"),
+  dataDiagnosticsPanel: document.getElementById("dataDiagnosticsPanel"),
+  dateFilterFrom: document.getElementById("dateFilterFrom"),
+  dateFilterTo: document.getElementById("dateFilterTo"),
+  clearDateFilter: document.getElementById("clearDateFilter"),
+  liveSaveIndicator: document.getElementById("liveSaveIndicator"),
+  firebaseLogsPanel: document.getElementById("firebaseLogsPanel"),
+  refreshFirebaseLogsBtn: document.getElementById("refreshFirebaseLogsBtn"),
+  clearFirebaseLogsBtn: document.getElementById("clearFirebaseLogsBtn"),
+  pushToFirebaseBtn: document.getElementById("pushToFirebaseBtn"),
+  pullFromFirebaseBtn: document.getElementById("pullFromFirebaseBtn")
 };
 
 // --- INITIALIZATION ---
@@ -481,6 +499,23 @@ function setupEventListeners() {
   // Global selector for Accounts
   els.globalAccountSelector.addEventListener("change", (e) => {
     state.activeAccountId = e.target.value;
+    filterDataAndRefresh();
+  });
+
+  // Date Range Filter
+  els.dateFilterFrom.addEventListener("change", (e) => {
+    state.dateFrom = e.target.value;
+    filterDataAndRefresh();
+  });
+  els.dateFilterTo.addEventListener("change", (e) => {
+    state.dateTo = e.target.value;
+    filterDataAndRefresh();
+  });
+  els.clearDateFilter.addEventListener("click", () => {
+    state.dateFrom = "";
+    state.dateTo = "";
+    els.dateFilterFrom.value = "";
+    els.dateFilterTo.value = "";
     filterDataAndRefresh();
   });
 
@@ -864,6 +899,50 @@ function setupEventListeners() {
       switchTab("aiCoachPage");
     });
   }
+
+  // Firebase Logs Panel
+  if (els.refreshFirebaseLogsBtn) {
+    els.refreshFirebaseLogsBtn.addEventListener("click", () => renderFirebaseLogs());
+  }
+  if (els.clearFirebaseLogsBtn) {
+    els.clearFirebaseLogsBtn.addEventListener("click", () => {
+      clearFirebaseLogs();
+      renderFirebaseLogs();
+    });
+  }
+
+  // Manual Sync Buttons
+  if (els.pushToFirebaseBtn) {
+    els.pushToFirebaseBtn.addEventListener("click", async () => {
+      els.pushToFirebaseBtn.disabled = true;
+      els.pushToFirebaseBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Pushing...';
+      const result = await pushLocalToFirebase();
+      if (result.ok) {
+        showNotification(`Pushed ${result.count} items to Firebase successfully!`, "success");
+      } else {
+        showNotification(`Push completed with ${result.errors.length} errors. Check logs.`, "warning");
+      }
+      els.pushToFirebaseBtn.disabled = false;
+      els.pushToFirebaseBtn.innerHTML = '<i class="fa fa-cloud-arrow-up"></i> Push Local → Firebase';
+      renderFirebaseLogs();
+    });
+  }
+  if (els.pullFromFirebaseBtn) {
+    els.pullFromFirebaseBtn.addEventListener("click", async () => {
+      els.pullFromFirebaseBtn.disabled = true;
+      els.pullFromFirebaseBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Pulling...';
+      const result = await pullFirebaseToLocal();
+      if (result.ok) {
+        showNotification(`Pulled and merged ${result.count} items from Firebase!`, "success");
+        await loadInitialData();
+      } else {
+        showNotification(`Pull completed with ${result.errors.length} errors. Check logs.`, "warning");
+      }
+      els.pullFromFirebaseBtn.disabled = false;
+      els.pullFromFirebaseBtn.innerHTML = '<i class="fa fa-cloud-arrow-down"></i> Pull Firebase → Local';
+      renderFirebaseLogs();
+    });
+  }
 }
 
 // Convert uploaded screenshot to base64 URL
@@ -942,6 +1021,9 @@ function switchTab(pageId) {
   } else if (pageId === "calendarPage") {
     const today = new Date();
     renderCalendar("calendarContainer", today.getFullYear(), today.getMonth(), state.allTrades, openCalendarDayTrades);
+  } else if (pageId === "settingsPage") {
+    renderDataDiagnostics();
+    renderFirebaseLogs();
   }
 }
 
@@ -982,6 +1064,9 @@ async function initAppUI() {
   // Load database items
   await loadInitialData();
   switchTab("dashboardPage");
+  
+  // Initialize theme
+  initThemes();
 }
 
 async function loadInitialData() {
@@ -998,6 +1083,87 @@ async function loadInitialData() {
   filterDataAndRefresh();
 }
 
+// --- THEME MANAGEMENT ---
+const THEMES = {
+  navy: { label: "TradingView Navy", cssVars: {} }, // uses :root defaults
+  emerald: {
+    label: "Emerald Forest",
+    cssVars: {
+      "--primary": "#10b981", "--primary-hover": "#059669", "--primary-glow": "rgba(16,185,129,0.15)",
+      "--bg-dark": "#050f0a", "--bg-card": "#0a1a12", "--bg-card-hover": "#0f2519",
+      "--card-border": "rgba(16,185,129,0.08)", "--card-border-hover": "rgba(16,185,129,0.25)",
+      "--success": "#34d399", "--success-bg": "rgba(52,211,153,0.08)", "--success-border": "rgba(52,211,153,0.2)",
+      "--danger": "#f87171", "--danger-bg": "rgba(248,113,113,0.08)", "--danger-border": "rgba(248,113,113,0.2)",
+      "--warning": "#fbbf24", "--warning-bg": "rgba(251,191,36,0.08)", "--warning-border": "rgba(251,191,36,0.2)"
+    }
+  },
+  cyberpunk: {
+    label: "Cyberpunk Neon",
+    cssVars: {
+      "--primary": "#f59e0b", "--primary-hover": "#d97706", "--primary-glow": "rgba(245,158,11,0.15)",
+      "--bg-dark": "#0a0800", "--bg-card": "#1a1408", "--bg-card-hover": "#251e0f",
+      "--card-border": "rgba(245,158,11,0.08)", "--card-border-hover": "rgba(245,158,11,0.25)",
+      "--success": "#34d399", "--success-bg": "rgba(52,211,153,0.08)", "--success-border": "rgba(52,211,153,0.2)",
+      "--danger": "#f87171", "--danger-bg": "rgba(248,113,113,0.08)", "--danger-border": "rgba(248,113,113,0.2)",
+      "--warning": "#fbbf24", "--warning-bg": "rgba(251,191,36,0.08)", "--warning-border": "rgba(251,191,36,0.2)"
+    }
+  },
+  amethyst: {
+    label: "Amethyst Void",
+    cssVars: {
+      "--primary": "#a855f7", "--primary-hover": "#9333ea", "--primary-glow": "rgba(168,85,247,0.15)",
+      "--bg-dark": "#0a060f", "--bg-card": "#150d1e", "--bg-card-hover": "#1e1428",
+      "--card-border": "rgba(168,85,247,0.08)", "--card-border-hover": "rgba(168,85,247,0.25)",
+      "--success": "#34d399", "--success-bg": "rgba(52,211,153,0.08)", "--success-border": "rgba(52,211,153,0.2)",
+      "--danger": "#f87171", "--danger-bg": "rgba(248,113,113,0.08)", "--danger-border": "rgba(248,113,113,0.2)",
+      "--warning": "#fbbf24", "--warning-bg": "rgba(251,191,36,0.08)", "--warning-border": "rgba(251,191,36,0.2)"
+    }
+  }
+};
+
+function initThemes() {
+  const saved = localStorage.getItem("tj_theme") || "navy";
+  applyTheme(saved);
+
+  const btnMap = {
+    navy: document.getElementById("btnThemeNavy"),
+    emerald: document.getElementById("btnThemeEmerald"),
+    cyberpunk: document.getElementById("btnThemeCyberpunk"),
+    amethyst: document.getElementById("btnThemeAmethyst")
+  };
+
+  Object.entries(btnMap).forEach(([key, btn]) => {
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      localStorage.setItem("tj_theme", key);
+      applyTheme(key);
+      // Update active button
+      Object.values(btnMap).forEach(b => b && b.classList.remove("active-theme"));
+      btn.classList.add("active-theme");
+    });
+  });
+
+  // Mark saved theme as active
+  Object.values(btnMap).forEach(b => b && b.classList.remove("active-theme"));
+  if (btnMap[saved]) btnMap[saved].classList.add("active-theme");
+}
+
+function applyTheme(themeKey) {
+  const root = document.documentElement;
+  // Reset to defaults first
+  root.removeAttribute("data-theme");
+  // Remove inline CSS vars
+  root.style.cssText = "";
+
+  if (themeKey && THEMES[themeKey] && Object.keys(THEMES[themeKey].cssVars).length > 0) {
+    root.setAttribute("data-theme", themeKey);
+    // Apply via CSS variables for full control
+    Object.entries(THEMES[themeKey].cssVars).forEach(([prop, val]) => {
+      root.style.setProperty(prop, val);
+    });
+  }
+}
+
 function populateSelectors() {
   // Clear selectors
   els.globalAccountSelector.innerHTML = '<option value="all">Combined (All Accounts)</option>';
@@ -1005,7 +1171,9 @@ function populateSelectors() {
   els.txAccount.innerHTML = '';
   els.filterAccount.innerHTML = '<option value="all">All Accounts</option>';
 
-  state.accounts.forEach(acc => {
+  const activeAccounts = state.accounts.filter(a => !a.archived);
+
+  activeAccounts.forEach(acc => {
     const opt = `<option value="${acc.id}">${acc.name} (${acc.currency || 'USD'})</option>`;
     els.globalAccountSelector.innerHTML += opt;
     els.tradeAccount.innerHTML += opt;
@@ -1019,11 +1187,20 @@ function populateSelectors() {
 
 function filterDataAndRefresh() {
   const accId = state.activeAccountId;
+  const archivedIds = new Set(state.accounts.filter(a => a.archived).map(a => a.id));
   
   if (accId === "all") {
-    state.trades = [...state.allTrades];
+    state.trades = state.allTrades.filter(t => !archivedIds.has(t.accountId));
   } else {
     state.trades = state.allTrades.filter(t => t.accountId === accId);
+  }
+
+  // Apply date range filter
+  if (state.dateFrom) {
+    state.trades = state.trades.filter(t => t.date >= state.dateFrom);
+  }
+  if (state.dateTo) {
+    state.trades = state.trades.filter(t => t.date <= state.dateTo);
   }
 
   // Refresh active pages visual
@@ -1303,9 +1480,16 @@ function renderHeatmap() {
 
 // --- RENDER PAGE: ACCOUNTS ---
 function renderAccountsPage() {
+  const activeAccounts = state.accounts.filter(a => !a.archived);
+  const archivedAccounts = state.accounts.filter(a => a.archived);
+
+  // Active Accounts Grid
   els.accountsGrid.innerHTML = "";
-  state.accounts.forEach(acc => {
-    // Calculate PnL for this account
+  if (activeAccounts.length === 0) {
+    els.accountsGrid.innerHTML = `<div class="col-span-2 text-center text-muted p-4">No active accounts. Create one or restore from archive.</div>`;
+  }
+
+  activeAccounts.forEach(acc => {
     const accTrades = state.allTrades.filter(t => t.accountId === acc.id);
     const tradesPnl = accTrades.reduce((sum, t) => sum + t.pnl, 0);
     
@@ -1328,9 +1512,14 @@ function renderAccountsPage() {
             <h4 class="text-lg font-bold">${acc.name}</h4>
             <span class="badge ${growth >= 0 ? 'badge-win' : 'badge-loss'}">${acc.type}</span>
           </div>
-          <button class="btn btn-sm btn-icon btn-secondary" onclick="deleteAccountTrigger('${acc.id}')" title="Delete Account">
-            <i class="fa fa-trash-can"></i>
-          </button>
+          <div class="flex gap-1">
+            <button class="btn btn-sm btn-icon btn-secondary" onclick="archiveAccountTrigger('${acc.id}', true)" title="Archive Account">
+              <i class="fa fa-box-archive"></i>
+            </button>
+            <button class="btn btn-sm btn-icon btn-secondary text-danger" onclick="deleteAccountTrigger('${acc.id}')" title="Delete Account">
+              <i class="fa fa-trash-can"></i>
+            </button>
+          </div>
         </div>
         <div class="mb-4">
           <span class="text-xs text-muted">CURRENT BALANCE</span>
@@ -1348,6 +1537,43 @@ function renderAccountsPage() {
       </div>
     `;
   });
+
+  // Archived Accounts Section
+  const archivedSection = document.getElementById("archivedAccountsSection");
+  const archivedGrid = document.getElementById("archivedAccountsGrid");
+  if (archivedSection && archivedGrid) {
+    if (archivedAccounts.length > 0 && state.showArchived) {
+      archivedSection.style.display = "block";
+      archivedGrid.innerHTML = "";
+      archivedAccounts.forEach(acc => {
+        archivedGrid.innerHTML += `
+          <div class="card-premium" style="opacity: 0.7;">
+            <div class="flex justify-between align-center mb-2">
+              <div>
+                <h4 class="text-sm font-bold">${acc.name}</h4>
+                <span class="badge badge-breakeven text-xs">${acc.type}</span>
+                <span class="badge badge-loss text-xs ml-1">Archived</span>
+              </div>
+              <div class="flex gap-1">
+                <button class="btn btn-sm btn-icon btn-secondary" onclick="archiveAccountTrigger('${acc.id}', false)" title="Restore">
+                  <i class="fa fa-rotate-left"></i>
+                </button>
+                <button class="btn btn-sm btn-icon btn-secondary text-danger" onclick="deleteAccountTrigger('${acc.id}')" title="Delete">
+                  <i class="fa fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+            <span class="text-xs text-muted">Balance: $${acc.balance.toLocaleString()}</span>
+          </div>
+        `;
+      });
+    } else {
+      archivedSection.style.display = archivedAccounts.length > 0 ? "block" : "none";
+      if (archivedAccounts.length > 0) {
+        archivedGrid.innerHTML = `<span class="text-xs text-muted">${archivedAccounts.length} archived account(s). Click "Show Archived" to view.</span>`;
+      }
+    }
+  }
 
   // Render transactions table
   els.transactionsTable.innerHTML = "";
@@ -1386,6 +1612,23 @@ window.deleteAccountTrigger = async function(accountId) {
     showNotification("Account deleted successfully.", "warning");
     await loadInitialData();
   }
+};
+
+window.archiveAccountTrigger = async function(accountId, archived) {
+  await archiveAccount(accountId, archived);
+  showNotification(archived ? "Account archived. It won't appear in main views." : "Account restored to active.", "success");
+  await loadInitialData();
+};
+
+window.toggleArchivedView = function() {
+  state.showArchived = !state.showArchived;
+  const btn = document.getElementById("toggleArchivedBtn");
+  if (btn) {
+    btn.innerHTML = state.showArchived
+      ? '<i class="fa fa-eye-slash"></i> Hide Archived'
+      : '<i class="fa fa-eye"></i> Show Archived';
+  }
+  renderAccountsPage();
 };
 
 window.openBalanceAdjustment = function(accountId, type) {
@@ -2101,19 +2344,54 @@ function renderDashboardWidgets() {
   updateLiveClock();
 }
 
-function renderEconomicCalendar() {
+async function renderEconomicCalendar() {
   if (!els.econCalendarList) return;
   
-  const events = [
-    { time: "08:30", currency: "USD", impact: "high", event: "CPI (Consumer Price Index)" },
-    { time: "10:00", currency: "USD", impact: "medium", event: "CB Consumer Confidence" },
-    { time: "13:15", currency: "USD", impact: "high", event: "FOMC Interest Rate Decision" },
-    { time: "14:30", currency: "USD", impact: "medium", event: "Unemployment Claims" },
-    { time: "04:30", currency: "GBP", impact: "high", event: "GDP Quarter-over-Quarter" },
-    { time: "07:45", currency: "EUR", impact: "medium", event: "ECB Press Conference" },
-    { time: "19:50", currency: "JPY", impact: "medium", event: "BOJ Policy Rate" },
-    { time: "21:30", currency: "AUD", impact: "low", event: "Employment Change" }
-  ];
+  // Try fetching live data from free ForexFactory mirror
+  let events = [];
+  try {
+    const resp = await fetch("https://nfs.faireconomy.media/ff_calendar_thisweek.json");
+    if (resp.ok) {
+      const allEvents = await resp.json();
+      // Filter only high/medium impact events from today and next 3 days
+      const now = new Date();
+      const cutoff = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+      events = allEvents
+        .filter(e => {
+          const d = new Date(e.date * 1000);
+          return d >= now && d <= cutoff && (e.impact === "High" || e.impact === "Medium");
+        })
+        .slice(0, 8)
+        .map(e => ({
+          time: new Date(e.date * 1000).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
+          currency: e.currency || "USD",
+          impact: e.impact.toLowerCase(),
+          event: e.title
+        }));
+    }
+  } catch (err) {
+    // API failed, use fallback static data
+  }
+
+  // Fallback static data if API fails or returns empty
+  if (events.length === 0) {
+    events = [
+      { time: "08:30", currency: "USD", impact: "high", event: "CPI (Consumer Price Index)" },
+      { time: "10:00", currency: "USD", impact: "medium", event: "CB Consumer Confidence" },
+      { time: "13:15", currency: "USD", impact: "high", event: "FOMC Interest Rate Decision" },
+      { time: "14:30", currency: "USD", impact: "medium", event: "Unemployment Claims" },
+      { time: "04:30", currency: "GBP", impact: "high", event: "GDP Quarter-over-Quarter" },
+      { time: "07:45", currency: "EUR", impact: "medium", event: "ECB Press Conference" },
+      { time: "19:50", currency: "JPY", impact: "medium", event: "BOJ Policy Rate" },
+      { time: "21:30", currency: "AUD", impact: "low", event: "Employment Change" }
+    ];
+    // Mark badge as fallback
+    const badge = document.getElementById("econCalendarBadge");
+    if (badge) badge.innerHTML = '<i class="fa-solid fa-circle" style="font-size: 6px; margin-right: 4px;"></i> SAMPLE DATA';
+  } else {
+    const badge = document.getElementById("econCalendarBadge");
+    if (badge) badge.innerHTML = '<i class="fa-solid fa-circle" style="font-size: 6px; margin-right: 4px;"></i> LIVE';
+  }
 
   els.econCalendarList.innerHTML = "";
   events.forEach(ev => {
@@ -2123,7 +2401,7 @@ function renderEconomicCalendar() {
     else if (ev.impact === "medium") { impactColor = "var(--warning)"; impactBg = "rgba(245,158,11,0.1)"; }
 
     els.econCalendarList.innerHTML += `
-      <div class="flex align-center gap-3 p-3 rounded-xl" style="background: ${impactBg}; border: 1px solid ${impactColor}22;">
+      <div class="flex align-center gap-3 p-3 rounded-xl" style="background: ${impactBg}; border-left: 3px solid ${impactColor}; border: 1px solid ${impactColor}22;">
         <div class="flex flex-col" style="min-width: 60px;">
           <span class="text-xs font-bold" style="color: ${impactColor};">${ev.time}</span>
           <span class="text-xs text-muted">${ev.currency}</span>
@@ -2145,15 +2423,16 @@ function renderSessionClocks() {
   const utcTotalMin = utcHour * 60 + utcMin;
 
   const sessions = [
-    { id: "badgeSydney", start: 22*60, end: 7*60, name: "Sydney" },
-    { id: "badgeTokyo", start: 0, end: 9*60, name: "Tokyo" },
-    { id: "badgeLondon", start: 8*60, end: 17*60, name: "London" },
-    { id: "badgeNewYork", start: 13*60, end: 22*60, name: "New York" }
+    { id: "badgeSydney", cardId: "clockSydney", start: 22*60, end: 7*60, name: "Sydney" },
+    { id: "badgeTokyo", cardId: "clockTokyo", start: 0, end: 9*60, name: "Tokyo" },
+    { id: "badgeLondon", cardId: "clockLondon", start: 8*60, end: 17*60, name: "London" },
+    { id: "badgeNewYork", cardId: "clockNewYork", start: 13*60, end: 22*60, name: "New York" }
   ];
 
   let activeSessions = 0;
   sessions.forEach(s => {
     const badge = document.getElementById(s.id);
+    const card = document.getElementById(s.cardId);
     if (!badge) return;
     let isOpen = false;
     if (s.start < s.end) {
@@ -2166,16 +2445,21 @@ function renderSessionClocks() {
       badge.innerText = "OPEN";
       badge.style.background = "rgba(16,185,129,0.15)";
       badge.style.color = "var(--success)";
+      badge.style.fontWeight = "700";
+      if (card) card.classList.add("session-open");
     } else {
       badge.innerText = "Closed";
       badge.style.background = "rgba(255,255,255,0.05)";
       badge.style.color = "var(--text-muted)";
+      badge.style.fontWeight = "500";
+      if (card) card.classList.remove("session-open");
     }
   });
 
   const clockStatus = document.getElementById("forexClockStatus");
   if (clockStatus) {
     clockStatus.innerText = activeSessions > 0 ? `${activeSessions} Session${activeSessions > 1 ? 's' : ''} Active` : "All Sessions Closed";
+    clockStatus.className = activeSessions > 0 ? "text-xs font-semibold text-success" : "text-xs text-muted";
   }
 }
 
@@ -2183,6 +2467,112 @@ function updateLiveClock() {
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-US', { hour12: true });
   if (els.headerLiveTime) els.headerLiveTime.innerText = timeStr;
+}
+
+// --- DATA DIAGNOSTICS PANEL ---
+function renderDataDiagnostics() {
+  if (!els.dataDiagnosticsPanel) return;
+
+  const localAccounts = JSON.parse(localStorage.getItem("tj_accounts") || "[]");
+  const localTrades = JSON.parse(localStorage.getItem("tj_trades") || "[]");
+  const localNotes = JSON.parse(localStorage.getItem("tj_notes") || "[]");
+
+  const mode = state.isLocalMode ? "LocalStorage" : (state.user ? "Firebase Cloud" : "Unknown");
+  const modeColor = state.isLocalMode ? "text-warning" : (state.user ? "text-success" : "text-danger");
+  const userEmail = state.user ? state.user.email : "Not logged in";
+
+  let html = `
+    <div class="flex justify-between align-center p-3 rounded-xl" style="background: rgba(255,255,255,0.02); border: 1px solid var(--card-border);">
+      <div class="flex flex-col">
+        <span class="text-xs text-muted">Active Mode</span>
+        <span class="font-bold ${modeColor}">${mode}</span>
+      </div>
+      <div class="flex flex-col" style="text-align: right;">
+        <span class="text-xs text-muted">User</span>
+        <span class="font-semibold text-light">${userEmail}</span>
+      </div>
+    </div>
+    <div class="text-xs font-bold text-muted mt-2 mb-1">LOCAL BROWSER CACHE:</div>
+    <div class="grid-cols-3 gap-2">
+      <div class="p-2 rounded text-center" style="background: rgba(99,102,241,0.05); border: 1px solid rgba(99,102,241,0.1);">
+        <div class="font-bold text-accent">${localTrades.length}</div>
+        <div class="text-xs text-muted">Trades</div>
+      </div>
+      <div class="p-2 rounded text-center" style="background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.1);">
+        <div class="font-bold text-success">${localAccounts.length}</div>
+        <div class="text-xs text-muted">Accounts</div>
+      </div>
+      <div class="p-2 rounded text-center" style="background: rgba(245,158,11,0.05); border: 1px solid rgba(245,158,11,0.1);">
+        <div class="font-bold text-warning">${localNotes.length}</div>
+        <div class="text-xs text-muted">Notes</div>
+      </div>
+    </div>
+    <div class="text-xs font-bold text-muted mt-3 mb-1">FIREBASE CLOUD:</div>
+    <div class="grid-cols-3 gap-2">
+      <div class="p-2 rounded text-center" style="background: rgba(99,102,241,0.05); border: 1px solid rgba(99,102,241,0.1);">
+        <div class="font-bold text-accent">${state.allTrades.length}</div>
+        <div class="text-xs text-muted">Trades</div>
+      </div>
+      <div class="p-2 rounded text-center" style="background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.1);">
+        <div class="font-bold text-success">${state.accounts.length}</div>
+        <div class="text-xs text-muted">Accounts</div>
+      </div>
+      <div class="p-2 rounded text-center" style="background: rgba(245,158,11,0.05); border: 1px solid rgba(245,158,11,0.1);">
+        <div class="font-bold text-warning">${state.notes.length}</div>
+        <div class="text-xs text-muted">Notes</div>
+      </div>
+    </div>
+  `;
+
+  // Show data status
+  const localTotal = localTrades.length + localAccounts.length + localNotes.length;
+  const cloudTotal = state.allTrades.length + state.accounts.length + state.notes.length;
+  if (localTotal > 0 && cloudTotal === 0 && !state.isLocalMode) {
+    html += `
+      <div class="p-3 rounded-xl mt-3" style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2);">
+        <span class="font-semibold text-danger text-sm"><i class="fa fa-triangle-exclamation"></i> Data mismatch: Local has ${localTotal} items, Firebase is empty. Use "Push Local → Firebase" to sync.</span>
+      </div>
+    `;
+  } else if (localTotal > 0 && cloudTotal > 0) {
+    html += `
+      <div class="p-3 rounded-xl mt-3" style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2);">
+        <span class="font-semibold text-success text-sm"><i class="fa fa-circle-check"></i> Data synced: ${cloudTotal} items in Firebase, ${localTotal} in local cache.</span>
+      </div>
+    `;
+  }
+
+  els.dataDiagnosticsPanel.innerHTML = html;
+}
+
+function renderFirebaseLogs() {
+  if (!els.firebaseLogsPanel) return;
+  const logs = getFirebaseLogs();
+  if (logs.length === 0) {
+    els.firebaseLogsPanel.innerHTML = `<div class="text-xs text-muted p-2">No Firebase operations logged yet. Data is being saved dual-write (Firebase + Local).</div>`;
+    return;
+  }
+  els.firebaseLogsPanel.innerHTML = "";
+  let hasPermissionError = false;
+  logs.forEach(log => {
+    const statusColor = log.status === "ok" ? "text-success" : "text-danger";
+    const statusIcon = log.status === "ok" ? "fa-check-circle" : "fa-xmark-circle";
+    if (log.detail && log.detail.toLowerCase().includes("permission")) {
+      hasPermissionError = true;
+    }
+    els.firebaseLogsPanel.innerHTML += `
+      <div class="flex align-center gap-2 p-1" style="border-bottom: 1px solid var(--card-border);">
+        <span class="text-muted" style="min-width: 65px;">${log.time}</span>
+        <i class="fa ${statusIcon} ${statusColor}" style="font-size: 10px;"></i>
+        <span class="font-semibold text-light">${log.action}</span>
+        <span class="text-muted text-xs" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${log.detail}</span>
+      </div>
+    `;
+  });
+  // Show Firestore rules fix panel if permission errors detected
+  const rulesFixPanel = document.getElementById("firestoreRulesFix");
+  if (rulesFixPanel) {
+    rulesFixPanel.style.display = hasPermissionError ? "block" : "none";
+  }
 }
 
 // --- RENDER PAGE: AI COACH HUB ---
@@ -2467,6 +2857,7 @@ function showNotification(message, type = "info") {
   // Set icon based on type
   if (type === "success") {
     icon.className = "fa-solid fa-circle-check text-success";
+    flashSaveIndicator();
   } else if (type === "danger") {
     icon.className = "fa-solid fa-circle-xmark text-danger";
   } else if (type === "warning") {
@@ -2479,4 +2870,14 @@ function showNotification(message, type = "info") {
   notificationTimeout = setTimeout(() => {
     banner.classList.remove("active");
   }, 4000);
+}
+
+function flashSaveIndicator() {
+  if (!els.liveSaveIndicator) return;
+  els.liveSaveIndicator.style.background = "rgba(16,185,129,0.3)";
+  els.liveSaveIndicator.style.boxShadow = "0 0 12px rgba(16,185,129,0.4)";
+  setTimeout(() => {
+    els.liveSaveIndicator.style.background = "rgba(16,185,129,0.1)";
+    els.liveSaveIndicator.style.boxShadow = "none";
+  }, 800);
 }

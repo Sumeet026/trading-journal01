@@ -131,10 +131,22 @@
         </div>
 
         <div class="header-actions">
-          <div class="form-group" style="margin-bottom: 0;">
-            <select class="input-control" id="globalAccountSelector" style="width: 220px; padding: 8px 12px;">
-              <option value="all">Combined (All Accounts)</option>
-            </select>
+          <div class="flex align-center gap-2">
+            <div class="form-group" style="margin-bottom: 0;">
+              <select class="input-control" id="globalAccountSelector" style="width: 180px; padding: 8px 12px;">
+                <option value="all">Combined (All Accounts)</option>
+              </select>
+            </div>
+            <input type="date" id="dateFilterFrom" class="input-control" style="width: 130px; padding: 6px 10px; font-size: 0.8rem;" title="From Date">
+            <span class="text-xs text-muted">to</span>
+            <input type="date" id="dateFilterTo" class="input-control" style="width: 130px; padding: 6px 10px; font-size: 0.8rem;" title="To Date">
+            <button class="btn btn-secondary btn-sm" id="clearDateFilter" title="Clear Date Filter" style="padding: 6px 10px;">
+              <i class="fa fa-times"></i>
+            </button>
+          </div>
+          <div id="liveSaveIndicator" class="flex align-center gap-1 text-xs" style="padding: 4px 10px; border-radius: 20px; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2);">
+            <i class="fa fa-circle text-success" style="font-size: 6px;"></i>
+            <span class="text-success font-semibold">LIVE</span>
           </div>
           <button class="btn btn-primary btn-sm" id="headerQuickAddBtn">
             <i class="fa fa-plus"></i> Quick Trade
@@ -252,42 +264,44 @@
         </div>
 
         <!-- Institutional Widgets Grid (Economic Calendar & Live Clocks) -->
-        <div class="grid-cols-12 mb-4">
-          <div class="card-premium col-span-6">
+        <div class="grid-cols-2 mb-4">
+          <div class="card-premium">
             <div class="card-title-bar">
               <h3><i class="fa-solid fa-calendar-check"></i> High-Impact Economic Calendar</h3>
-              <span class="badge badge-loss">Live Alerts</span>
+              <span class="badge badge-win" id="econCalendarBadge" style="animation: pulse 2s infinite;">
+                <i class="fa-solid fa-circle" style="font-size: 6px; margin-right: 4px;"></i> LIVE ALERTS
+              </span>
             </div>
-            <div id="econCalendarList" class="flex flex-col gap-3" style="max-height: 240px; overflow-y: auto; padding-right: 4px;">
-              <!-- Dynamic econ news events -->
+            <div id="econCalendarList" class="flex flex-col gap-3" style="max-height: 260px; overflow-y: auto; padding-right: 4px;">
+              <div class="text-xs text-muted p-2">Loading live economic events...</div>
             </div>
           </div>
 
-          <div class="card-premium col-span-6">
+          <div class="card-premium">
             <div class="card-title-bar">
               <h3><i class="fa-solid fa-clock"></i> Global Session Clock</h3>
               <span id="forexClockStatus" class="text-xs text-muted">Active Sessions</span>
             </div>
-            <div class="grid-cols-4 gap-2 text-center mt-2">
-              <div class="p-3 rounded-xl border border-card-border" id="clockSydney" style="background: rgba(255,255,255,0.015);">
-                <div class="text-xs font-bold">Sydney</div>
-                <div class="text-xs text-muted mt-1" style="font-size: 0.65rem;">22:00 - 07:00</div>
-                <span class="badge mt-2" id="badgeSydney" style="background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.65rem; padding: 2px 6px;">Closed</span>
+            <div class="grid-cols-2 gap-3 text-center mt-2" id="sessionClocksGrid">
+              <div class="p-3 rounded-xl" id="clockSydney" style="background: rgba(255,255,255,0.015); border: 1px solid var(--card-border);">
+                <div class="text-sm font-bold">Sydney</div>
+                <div class="text-xs text-muted mt-1">22:00 - 07:00 UTC</div>
+                <span class="badge mt-2" id="badgeSydney" style="background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.65rem; padding: 3px 8px;">Closed</span>
               </div>
-              <div class="p-3 rounded-xl border border-card-border" id="clockTokyo" style="background: rgba(255,255,255,0.015);">
-                <div class="text-xs font-bold">Tokyo</div>
-                <div class="text-xs text-muted mt-1" style="font-size: 0.65rem;">00:00 - 09:00</div>
-                <span class="badge mt-2" id="badgeTokyo" style="background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.65rem; padding: 2px 6px;">Closed</span>
+              <div class="p-3 rounded-xl" id="clockTokyo" style="background: rgba(255,255,255,0.015); border: 1px solid var(--card-border);">
+                <div class="text-sm font-bold">Tokyo</div>
+                <div class="text-xs text-muted mt-1">00:00 - 09:00 UTC</div>
+                <span class="badge mt-2" id="badgeTokyo" style="background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.65rem; padding: 3px 8px;">Closed</span>
               </div>
-              <div class="p-3 rounded-xl border border-card-border" id="clockLondon" style="background: rgba(255,255,255,0.015);">
-                <div class="text-xs font-bold">London</div>
-                <div class="text-xs text-muted mt-1" style="font-size: 0.65rem;">08:00 - 17:00</div>
-                <span class="badge mt-2" id="badgeLondon" style="background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.65rem; padding: 2px 6px;">Closed</span>
+              <div class="p-3 rounded-xl" id="clockLondon" style="background: rgba(255,255,255,0.015); border: 1px solid var(--card-border);">
+                <div class="text-sm font-bold">London</div>
+                <div class="text-xs text-muted mt-1">08:00 - 17:00 UTC</div>
+                <span class="badge mt-2" id="badgeLondon" style="background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.65rem; padding: 3px 8px;">Closed</span>
               </div>
-              <div class="p-3 rounded-xl border border-card-border" id="clockNewYork" style="background: rgba(255,255,255,0.015);">
-                <div class="text-xs font-bold">New York</div>
-                <div class="text-xs text-muted mt-1" style="font-size: 0.65rem;">13:00 - 22:00</div>
-                <span class="badge mt-2" id="badgeNewYork" style="background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.65rem; padding: 2px 6px;">Closed</span>
+              <div class="p-3 rounded-xl" id="clockNewYork" style="background: rgba(255,255,255,0.015); border: 1px solid var(--card-border);">
+                <div class="text-sm font-bold">New York</div>
+                <div class="text-xs text-muted mt-1">13:00 - 22:00 UTC</div>
+                <span class="badge mt-2" id="badgeNewYork" style="background: rgba(255,255,255,0.05); color: var(--text-muted); font-size: 0.65rem; padding: 3px 8px;">Closed</span>
               </div>
             </div>
             <div class="text-xs text-muted text-center mt-4">
@@ -431,6 +445,18 @@
                 <!-- Filled dynamically -->
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- Archived Accounts -->
+        <div class="card-premium mt-4" id="archivedAccountsSection" style="display: none;">
+          <div class="card-title-bar">
+            <h3><i class="fa-solid fa-box-archive text-warning"></i> Archived Accounts</h3>
+            <button class="btn btn-secondary btn-sm" id="toggleArchivedBtn" onclick="toggleArchivedView()">
+              <i class="fa fa-eye"></i> Show Archived
+            </button>
+          </div>
+          <div id="archivedAccountsGrid" class="grid-cols-3">
           </div>
         </div>
       </div>
@@ -1072,6 +1098,71 @@
             </button>
             <button class="btn btn-secondary" id="btnThemeAmethyst" style="border-left: 4px solid #a855f7; justify-content: flex-start; text-align: left; padding: 12px 16px;">
               <i class="fa fa-circle text-accent"></i> Amethyst Void
+            </button>
+          </div>
+        </div>
+
+        <div class="card-premium mt-4">
+          <div class="card-title-bar">
+            <h3><i class="fa-solid fa-stethoscope"></i> Data Diagnostics</h3>
+            <span class="text-xs text-muted">Check where your data is stored</span>
+          </div>
+          <div class="flex flex-col gap-3" id="dataDiagnosticsPanel">
+            <div class="text-sm text-muted">Loading diagnostics...</div>
+          </div>
+        </div>
+
+        <div class="card-premium mt-4">
+          <div class="card-title-bar">
+            <h3><i class="fa-solid fa-fire-flame-curved text-accent"></i> Firebase Live Logs</h3>
+            <div class="flex gap-2">
+              <button class="btn btn-secondary btn-sm" id="refreshFirebaseLogsBtn"><i class="fa fa-rotate"></i> Refresh</button>
+              <button class="btn btn-secondary btn-sm" id="clearFirebaseLogsBtn"><i class="fa fa-trash-can"></i> Clear</button>
+            </div>
+          </div>
+          <div id="firebaseLogsPanel" class="flex flex-col gap-1" style="max-height: 240px; overflow-y: auto; font-family: monospace; font-size: 0.72rem;">
+            <div class="text-xs text-muted p-2">No Firebase operations logged yet.</div>
+          </div>
+        </div>
+
+        <div class="card-premium mt-4" id="firestoreRulesFix" style="display:none;">
+          <div class="card-title-bar">
+            <h3><i class="fa-solid fa-shield-halved text-warning"></i> Firestore Rules Fix Required</h3>
+          </div>
+          <p class="text-sm text-muted mb-2">
+            Your Firestore security rules are blocking read/write. To fix:
+          </p>
+          <ol class="text-sm text-muted mb-3" style="padding-left: 20px; line-height: 2;">
+            <li>Go to <strong>Firebase Console</strong> → Your Project → <strong>Firestore Database</strong> → <strong>Rules</strong></li>
+            <li>Replace existing rules with these <strong>test rules</strong>:</li>
+          </ol>
+          <pre style="background:#0d1117; padding:12px; border-radius:8px; font-size:0.72rem; overflow-x:auto; color:#10b981; border:1px solid var(--card-border);">
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}</pre>
+          <p class="text-xs text-muted mt-2">
+            <i class="fa-solid fa-circle-info"></i> These rules allow only the logged-in user to access their own data. After testing, you can tighten them further.
+          </p>
+        </div>
+
+        <div class="card-premium mt-4">
+          <div class="card-title-bar">
+            <h3><i class="fa-solid fa-arrows-rotate text-success"></i> Manual Sync</h3>
+          </div>
+          <p class="text-sm text-muted mb-4">
+            Force push all local data to Firebase, or pull all Firebase data to this browser.
+          </p>
+          <div class="flex gap-3">
+            <button class="btn btn-primary" id="pushToFirebaseBtn" style="flex:1;">
+              <i class="fa fa-cloud-arrow-up"></i> Push Local → Firebase
+            </button>
+            <button class="btn btn-secondary" id="pullFromFirebaseBtn" style="flex:1;">
+              <i class="fa fa-cloud-arrow-down"></i> Pull Firebase → Local
             </button>
           </div>
         </div>

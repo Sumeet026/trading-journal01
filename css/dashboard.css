@@ -1095,6 +1095,66 @@ select.input-control option:selected {
   100% { transform: scale(1.6); opacity: 0; }
 }
 
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Session Clock open glow */
+.session-open {
+  border-color: var(--success) !important;
+  box-shadow: 0 0 12px rgba(16,185,129,0.15);
+}
+
+/* --- THEME DEFINITIONS --- */
+/* Emerald Forest */
+[data-theme="emerald"] {
+  --primary: #10b981;
+  --primary-hover: #059669;
+  --primary-glow: rgba(16, 185, 129, 0.15);
+  --bg-dark: #050f0a;
+  --bg-card: #0a1a12;
+  --bg-card-hover: #0f2519;
+  --card-border: rgba(16, 185, 129, 0.08);
+  --card-border-hover: rgba(16, 185, 129, 0.25);
+}
+
+/* Cyberpunk Neon */
+[data-theme="cyberpunk"] {
+  --primary: #f59e0b;
+  --primary-hover: #d97706;
+  --primary-glow: rgba(245, 158, 11, 0.15);
+  --bg-dark: #0a0800;
+  --bg-card: #1a1408;
+  --bg-card-hover: #251e0f;
+  --card-border: rgba(245, 158, 11, 0.08);
+  --card-border-hover: rgba(245, 158, 11, 0.25);
+}
+
+/* Amethyst Void */
+[data-theme="amethyst"] {
+  --primary: #a855f7;
+  --primary-hover: #9333ea;
+  --primary-glow: rgba(168, 85, 247, 0.15);
+  --bg-dark: #0a060f;
+  --bg-card: #150d1e;
+  --bg-card-hover: #1e1428;
+  --card-border: rgba(168, 85, 247, 0.08);
+  --card-border-hover: rgba(168, 85, 247, 0.25);
+}
+
+/* TradingView Navy (default) */
+[data-theme="navy"], :root {
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --primary-glow: rgba(99, 102, 241, 0.15);
+  --bg-dark: #07090e;
+  --bg-card: #0f131a;
+  --bg-card-hover: #151a24;
+  --card-border: rgba(255, 255, 255, 0.05);
+  --card-border-hover: rgba(99, 102, 241, 0.25);
+}
+
 /* Active Theme Button */
 .active-theme {
   background-color: rgba(99, 102, 241, 0.08) !important;
@@ -1133,6 +1193,7 @@ select.input-control option:selected {
 /* Responsive Overrides */
 @media (max-width: 1024px) {
   .grid-cols-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-cols-2 { grid-template-columns: 1fr; }
   .grid-cols-3 { grid-template-columns: 1fr; }
   .col-span-8, .col-span-4, .col-span-6, .col-span-3, .col-span-9 { grid-column: span 12; }
 }
