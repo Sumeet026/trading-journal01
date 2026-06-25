@@ -7,6 +7,7 @@ import {
   onAuthStateChanged,
   updateProfile,
   sendPasswordResetEmail,
+  sendEmailVerification,
   GoogleAuthProvider,
   signInWithPopup
 } from "./firebase.js";
@@ -83,13 +84,19 @@ const els = {
   authSubmitBtn: document.getElementById("authSubmitBtn"),
   authSwitchBtn: document.getElementById("authSwitchBtn"),
   authSwitchText: document.getElementById("authSwitchText"),
-  bypassAuthBtn: document.getElementById("bypassAuthBtn"),
   nameGroup: document.getElementById("nameGroup"),
   authName: document.getElementById("authName"),
   authEmail: document.getElementById("authEmail"),
   authPassword: document.getElementById("authPassword"),
   authRemember: document.getElementById("authRemember"),
   forgotPasswordBtn: document.getElementById("forgotPasswordBtn"),
+  
+  emailVerifyOverlay: document.getElementById("emailVerifyOverlay"),
+  verifyEmailDisplay: document.getElementById("verifyEmailDisplay"),
+  resendVerifyBtn: document.getElementById("resendVerifyBtn"),
+  checkVerifyBtn: document.getElementById("checkVerifyBtn"),
+  logoutFromVerifyBtn: document.getElementById("logoutFromVerifyBtn"),
+  verifyStatusMsg: document.getElementById("verifyStatusMsg"),
   
   appMain: document.getElementById("appMain"),
   headerTitle: document.getElementById("headerTitle"),
@@ -160,19 +167,17 @@ const els = {
   typeSell: document.getElementById("typeSell"),
   tradeEntryPrice: document.getElementById("tradeEntryPrice"),
   tradeExitPrice: document.getElementById("tradeExitPrice"),
-  tradeStopLoss: document.getElementById("tradeStopLoss"),
-  tradeTakeProfit: document.getElementById("tradeTakeProfit"),
   tradeQuantity: document.getElementById("tradeQuantity"),
   tradeCommission: document.getElementById("tradeCommission"),
-  tradeSwap: document.getElementById("tradeSwap"),
-  tradeSlippage: document.getElementById("tradeSlippage"),
-  tradeRiskPct: document.getElementById("tradeRiskPct"),
-  tradeLeverage: document.getElementById("tradeLeverage"),
   tradeDate: document.getElementById("tradeDate"),
-  tradeTime: document.getElementById("tradeTime"),
   tradeStrategy: document.getElementById("tradeStrategy"),
   tradeSetup: document.getElementById("tradeSetup"),
-  tradeCondition: document.getElementById("tradeCondition"),
+  strategyInput: document.getElementById("strategyInput"),
+  setupInput: document.getElementById("setupInput"),
+  addStrategyBtn: document.getElementById("addStrategyBtn"),
+  addSetupBtn: document.getElementById("addSetupBtn"),
+  savedStrategies: document.getElementById("savedStrategies"),
+  savedSetups: document.getElementById("savedSetups"),
   tradeTimeframe: document.getElementById("tradeTimeframe"),
   tradeEmotionBefore: document.getElementById("tradeEmotionBefore"),
   tradeEmotionAfter: document.getElementById("tradeEmotionAfter"),
@@ -270,12 +275,9 @@ const els = {
   detailQuantity: document.getElementById("detailQuantity"),
   detailEntryPrice: document.getElementById("detailEntryPrice"),
   detailExitPrice: document.getElementById("detailExitPrice"),
-  detailStopLoss: document.getElementById("detailStopLoss"),
-  detailTakeProfit: document.getElementById("detailTakeProfit"),
   detailFees: document.getElementById("detailFees"),
   detailStrategy: document.getElementById("detailStrategy"),
   detailSetup: document.getElementById("detailSetup"),
-  detailMarket: document.getElementById("detailMarket"),
   detailTimeframe: document.getElementById("detailTimeframe"),
   detailEmotionBefore: document.getElementById("detailEmotionBefore"),
   detailEmotionAfter: document.getElementById("detailEmotionAfter"),
@@ -343,43 +345,145 @@ document.addEventListener("DOMContentLoaded", () => {
   setupMobileFilterToggle();
   setupEventListeners();
   checkAuthSession();
+  initCustomTagSystem();
 });
+
+// --- CUSTOM TAG INPUT SYSTEM (Strategy & Setup) ---
+let savedStrategies = JSON.parse(localStorage.getItem("tj_saved_strategies") || "[]");
+let savedSetups = JSON.parse(localStorage.getItem("tj_saved_setups") || "[]");
+
+function initCustomTagSystem() {
+  renderStrategies();
+  renderSetups();
+
+  // Add Strategy
+  els.addStrategyBtn.addEventListener("click", () => {
+    const val = els.strategyInput.value.trim();
+    if (val && !savedStrategies.includes(val)) {
+      savedStrategies.push(val);
+      localStorage.setItem("tj_saved_strategies", JSON.stringify(savedStrategies));
+      els.strategyInput.value = "";
+      renderStrategies();
+    }
+  });
+
+  els.strategyInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      els.addStrategyBtn.click();
+    }
+  });
+
+  // Add Setup
+  els.addSetupBtn.addEventListener("click", () => {
+    const val = els.setupInput.value.trim();
+    if (val && !savedSetups.includes(val)) {
+      savedSetups.push(val);
+      localStorage.setItem("tj_saved_setups", JSON.stringify(savedSetups));
+      els.setupInput.value = "";
+      renderSetups();
+    }
+  });
+
+  els.setupInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      els.addSetupBtn.click();
+    }
+  });
+}
+
+function renderStrategies() {
+  els.savedStrategies.innerHTML = "";
+  if (savedStrategies.length === 0) {
+    els.savedStrategies.innerHTML = '<span class="no-tags-msg">No strategies added yet. Type and click Add.</span>';
+    return;
+  }
+  savedStrategies.forEach(s => {
+    const isActive = els.tradeStrategy.value === s ? "active" : "";
+    const chip = document.createElement("span");
+    chip.className = `tag-chip ${isActive}`;
+    chip.innerHTML = `${s} <span class="tag-delete" data-val="${s}">&times;</span>`;
+    chip.addEventListener("click", (e) => {
+      if (e.target.classList.contains("tag-delete")) {
+        savedStrategies = savedStrategies.filter(x => x !== e.target.dataset.val);
+        localStorage.setItem("tj_saved_strategies", JSON.stringify(savedStrategies));
+        renderStrategies();
+      } else {
+        els.tradeStrategy.value = s;
+        renderStrategies();
+      }
+    });
+    els.savedStrategies.appendChild(chip);
+  });
+}
+
+function renderSetups() {
+  els.savedSetups.innerHTML = "";
+  if (savedSetups.length === 0) {
+    els.savedSetups.innerHTML = '<span class="no-tags-msg">No setups added yet. Type and click Add.</span>';
+    return;
+  }
+  savedSetups.forEach(s => {
+    const isActive = els.tradeSetup.value === s ? "active" : "";
+    const chip = document.createElement("span");
+    chip.className = `tag-chip ${isActive}`;
+    chip.innerHTML = `${s} <span class="tag-delete" data-val="${s}">&times;</span>`;
+    chip.addEventListener("click", (e) => {
+      if (e.target.classList.contains("tag-delete")) {
+        savedSetups = savedSetups.filter(x => x !== e.target.dataset.val);
+        localStorage.setItem("tj_saved_setups", JSON.stringify(savedSetups));
+        renderSetups();
+      } else {
+        els.tradeSetup.value = s;
+        renderSetups();
+      }
+    });
+    els.savedSetups.appendChild(chip);
+  });
+}
 
 // --- AUTHENTICATION FLOW ---
 let isSignUpMode = true;
 
 function checkAuthSession() {
-  const localBypass = localStorage.getItem("tj_local_mode") === "true";
-  const rememberSession = localStorage.getItem("tj_remember_session") === "true";
-
   if (isFirebaseEnabled) {
     onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         state.user = firebaseUser;
         state.isLocalMode = false;
-        showNotification("Successfully authenticated with Firebase.", "success");
-        initAppUI();
-      } else if (localBypass || !rememberSession) {
-        // Fallback to local
-        state.user = null;
-        state.isLocalMode = true;
-        initAppUI();
+        
+        // Check if email is verified
+        if (firebaseUser.emailVerified) {
+          showNotification("Successfully authenticated.", "success");
+          initAppUI();
+        } else {
+          // Email not verified - show verification screen
+          showEmailVerifyScreen(firebaseUser.email);
+        }
       } else {
         showAuthScreen();
       }
     });
   } else {
-    // Firebase disabled or config issues: force Local mode
-    state.user = null;
-    state.isLocalMode = true;
-    initAppUI();
+    // Firebase disabled - show auth screen (no local mode allowed)
+    showAuthScreen();
   }
 }
 
 function showAuthScreen() {
   els.authOverlay.style.display = "flex";
   els.appMain.style.display = "none";
+  els.emailVerifyOverlay.style.display = "none";
   setAuthMode(true);
+}
+
+function showEmailVerifyScreen(email) {
+  els.authOverlay.style.display = "none";
+  els.appMain.style.display = "none";
+  els.emailVerifyOverlay.style.display = "flex";
+  els.verifyEmailDisplay.textContent = email || "";
+  els.verifyStatusMsg.textContent = "";
 }
 
 function setAuthMode(signUp) {
@@ -458,44 +562,81 @@ function setupEventListeners() {
     const email = els.authEmail.value;
     const password = els.authPassword.value;
     const name = els.authName.value;
-    const remember = els.authRemember.checked;
-
-    localStorage.setItem("tj_remember_session", remember ? "true" : "false");
 
     try {
       if (isSignUpMode) {
         const userCred = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(userCred.user, { displayName: name });
-        showNotification("Account created successfully!", "success");
+        // Send verification email
+        await sendEmailVerification(userCred.user);
+        showNotification("Account created! Verification email sent. Please check your inbox.", "success");
+        // Show email verification screen
+        showEmailVerifyScreen(email);
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
-        showNotification("Logged in successfully!", "success");
+        const userCred = await signInWithEmailAndPassword(auth, email, password);
+        // Check if email is verified
+        if (userCred.user.emailVerified) {
+          showNotification("Logged in successfully!", "success");
+          els.authOverlay.style.display = "none";
+        } else {
+          showNotification("Please verify your email first. Check your inbox.", "warning");
+          showEmailVerifyScreen(email);
+        }
       }
-      localStorage.setItem("tj_local_mode", "false");
-      els.authOverlay.style.display = "none";
     } catch (error) {
       console.error("Auth error:", error);
       showNotification(error.message, "danger");
     }
   });
 
-  // Bypass Auth / Local Mode
-  els.bypassAuthBtn.addEventListener("click", () => {
-    localStorage.setItem("tj_local_mode", "true");
-    state.isLocalMode = true;
-    els.authOverlay.style.display = "none";
-    initAppUI();
+  // Email Verification - Resend
+  els.resendVerifyBtn.addEventListener("click", async () => {
+    if (state.user) {
+      try {
+        await sendEmailVerification(state.user);
+        els.verifyStatusMsg.textContent = "Verification email sent! Check your inbox.";
+        els.verifyStatusMsg.style.color = "var(--primary)";
+        showNotification("Verification email resent!", "success");
+      } catch (error) {
+        els.verifyStatusMsg.textContent = "Failed to send. Try again later.";
+        els.verifyStatusMsg.style.color = "var(--danger)";
+      }
+    }
+  });
+
+  // Email Verification - Check status
+  els.checkVerifyBtn.addEventListener("click", async () => {
+    if (state.user) {
+      try {
+        await state.user.reload();
+        if (state.user.emailVerified) {
+          showNotification("Email verified! Welcome!", "success");
+          els.emailVerifyOverlay.style.display = "none";
+          initAppUI();
+        } else {
+          els.verifyStatusMsg.textContent = "Email not verified yet. Check your inbox and click the link.";
+          els.verifyStatusMsg.style.color = "var(--warning)";
+          showNotification("Email not verified yet.", "warning");
+        }
+      } catch (error) {
+        els.verifyStatusMsg.textContent = "Error checking status. Try again.";
+        els.verifyStatusMsg.style.color = "var(--danger)";
+      }
+    }
+  });
+
+  // Email Verification - Logout
+  els.logoutFromVerifyBtn.addEventListener("click", async () => {
+    await signOut(auth);
+    localStorage.removeItem("tj_local_mode");
+    location.reload();
   });
 
   // Logout
   els.logoutBtn.addEventListener("click", async () => {
-    if (state.isLocalMode) {
-      localStorage.setItem("tj_local_mode", "false");
-      location.reload();
-    } else {
-      await signOut(auth);
-      location.reload();
-    }
+    await signOut(auth);
+    localStorage.removeItem("tj_local_mode");
+    location.reload();
   });
 
   // Global selector for Accounts
@@ -591,35 +732,20 @@ function setupEventListeners() {
     const exitPrice = parseFloat(els.tradeExitPrice.value);
     const qty = parseFloat(els.tradeQuantity.value);
     const comm = parseFloat(els.tradeCommission.value) || 0;
-    const swap = parseFloat(els.tradeSwap.value) || 0;
     const type = els.tradeType.value;
     
     // Calculate PnL
     let pnl = 0;
     if (type === "Buy") {
-      pnl = (exitPrice - entryPrice) * qty - comm - swap;
+      pnl = (exitPrice - entryPrice) * qty - comm;
     } else {
-      pnl = (entryPrice - exitPrice) * qty - comm - swap;
+      pnl = (entryPrice - exitPrice) * qty - comm;
     }
 
     // Classify result
     let result = "Break-even";
     if (pnl > 0.05) result = "Win";
     else if (pnl < -0.05) result = "Loss";
-
-    // Stop Loss / Take profit
-    const stopLoss = parseFloat(els.tradeStopLoss.value) || 0;
-    const takeProfit = parseFloat(els.tradeTakeProfit.value) || 0;
-
-    // R Multiple Calculation
-    let r = 0;
-    if (stopLoss && stopLoss !== entryPrice) {
-      if (type === "Buy") {
-        r = (exitPrice - entryPrice) / (entryPrice - stopLoss);
-      } else {
-        r = (entryPrice - exitPrice) / (stopLoss - entryPrice);
-      }
-    }
 
     // Get selected mistakes
     const mistakes = [];
@@ -635,19 +761,14 @@ function setupEventListeners() {
       type,
       entryPrice,
       exitPrice,
-      stopLoss,
-      takeProfit,
       quantity: qty,
       commission: comm,
-      swap,
       pnl,
-      rMultiple: r,
+      rMultiple: 0,
       result,
       date: els.tradeDate.value,
-      time: els.tradeTime.value,
       strategy: els.tradeStrategy.value || "None",
       setup: els.tradeSetup.value || "None",
-      marketCondition: els.tradeCondition.value,
       timeframe: els.tradeTimeframe.value,
       emotionBefore: els.tradeEmotionBefore.value,
       emotionAfter: els.tradeEmotionAfter.value,
@@ -1839,15 +1960,12 @@ window.duplicateTradeTrigger = function(tradeId) {
     setTradeType(trade.type);
     els.tradeEntryPrice.value = trade.entryPrice;
     els.tradeExitPrice.value = trade.exitPrice;
-    els.tradeStopLoss.value = trade.stopLoss || "";
-    els.tradeTakeProfit.value = trade.takeProfit || "";
     els.tradeQuantity.value = trade.quantity;
     els.tradeCommission.value = trade.commission || 0;
-    els.tradeSwap.value = trade.swap || 0;
-    els.tradeRiskPct.value = trade.riskPercentage || "";
     els.tradeStrategy.value = trade.strategy || "";
     els.tradeSetup.value = trade.setup || "";
-    els.tradeCondition.value = trade.marketCondition;
+    renderStrategies();
+    renderSetups();
     els.tradeTimeframe.value = trade.timeframe;
     
     showNotification("Trade properties duplicated into entry form.", "info");
@@ -1883,13 +2001,10 @@ window.openTradeDetails = function(tradeId) {
   els.detailQuantity.innerText = t.quantity.toLocaleString();
   els.detailEntryPrice.innerText = "$" + t.entryPrice;
   els.detailExitPrice.innerText = "$" + t.exitPrice;
-  els.detailStopLoss.innerText = t.stopLoss ? "$" + t.stopLoss : "None Set";
-  els.detailTakeProfit.innerText = t.takeProfit ? "$" + t.takeProfit : "None Set";
-  els.detailFees.innerText = `Commissions: $${t.commission || '0'} | Swaps: $${t.swap || '0'}`;
+  els.detailFees.innerText = `$${t.commission || '0'}`;
 
   els.detailStrategy.innerText = t.strategy || "None Tagged";
   els.detailSetup.innerText = t.setup || "None Specified";
-  els.detailMarket.innerText = t.marketCondition || "Trending";
   els.detailTimeframe.innerText = t.timeframe || "1H";
   els.detailEmotionBefore.innerText = t.emotionBefore || "Calm";
   els.detailEmotionAfter.innerText = t.emotionAfter || "Calm";
@@ -1936,17 +2051,13 @@ window.loadTradeIntoForm = function(tradeId) {
   setTradeType(trade.type);
   els.tradeEntryPrice.value = trade.entryPrice;
   els.tradeExitPrice.value = trade.exitPrice;
-  els.tradeStopLoss.value = trade.stopLoss || "";
-  els.tradeTakeProfit.value = trade.takeProfit || "";
   els.tradeQuantity.value = trade.quantity;
   els.tradeCommission.value = trade.commission || 0;
-  els.tradeSwap.value = trade.swap || 0;
-  els.tradeRiskPct.value = trade.riskPercentage || "";
   els.tradeDate.value = trade.date;
-  els.tradeTime.value = trade.time || "";
   els.tradeStrategy.value = trade.strategy || "";
   els.tradeSetup.value = trade.setup || "";
-  els.tradeCondition.value = trade.marketCondition;
+  renderStrategies();
+  renderSetups();
   els.tradeTimeframe.value = trade.timeframe;
   els.tradeEmotionBefore.value = trade.emotionBefore;
   els.tradeEmotionAfter.value = trade.emotionAfter;
@@ -1982,7 +2093,12 @@ function resetTradeForm() {
   els.tradeForm.reset();
   setTradeType("Buy");
   els.tradeDate.value = new Date().toISOString().split("T")[0];
-  els.tradeTime.value = new Date().toTimeString().split(" ")[0].substring(0,5);
+  
+  // Reset strategy & setup
+  els.tradeStrategy.value = "";
+  els.tradeSetup.value = "";
+  renderStrategies();
+  renderSetups();
   
   // Reset screenshot
   els.screenshotPreview.src = "";
