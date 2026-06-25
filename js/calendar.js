@@ -1,5 +1,12 @@
 // Trading Calendar rendering engine
 
+const currencySymbols = {
+  "USD": "$",
+  "EUR": "€",
+  "GBP": "£",
+  "INR": "₹"
+};
+
 export function groupByDate(trades) {
   const map = {};
   trades.forEach(t => {
@@ -16,9 +23,11 @@ export function groupByDate(trades) {
   return map;
 }
 
-export function renderCalendar(containerId, year, month, trades, onDayClick) {
+export function renderCalendar(containerId, year, month, trades, onDayClick, currency = "USD") {
   const container = document.getElementById(containerId);
   if (!container) return;
+
+  const sym = currencySymbols[currency] || "$";
 
   // Group trades by date
   const groupedData = groupByDate(trades);
@@ -75,13 +84,13 @@ export function renderCalendar(containerId, year, month, trades, onDayClick) {
       
       if (netPnl > 0.01) {
         cellClass += " calendar-profit";
-        pnlHtml = `<div class="calendar-pnl font-semibold">+$${netPnl.toFixed(2)}</div>`;
+        pnlHtml = `<div class="calendar-pnl font-semibold">+${sym}${netPnl.toFixed(2)}</div>`;
       } else if (netPnl < -0.01) {
         cellClass += " calendar-loss";
-        pnlHtml = `<div class="calendar-pnl font-semibold">-$${Math.abs(netPnl).toFixed(2)}</div>`;
+        pnlHtml = `<div class="calendar-pnl font-semibold">-${sym}${Math.abs(netPnl).toFixed(2)}</div>`;
       } else {
         cellClass += " calendar-neutral";
-        pnlHtml = `<div class="calendar-pnl font-semibold">$0.00</div>`;
+        pnlHtml = `<div class="calendar-pnl font-semibold">${sym}0.00</div>`;
       }
     }
 
@@ -124,7 +133,7 @@ export function renderCalendar(containerId, year, month, trades, onDayClick) {
     <div class="calendar-summary-footer mt-4 p-3 bg-card-dark rounded-xl border border-card-border flex justify-between align-center">
       <div class="flex flex-col">
         <span class="text-xs text-muted">MONTHLY NET P&L</span>
-        <span class="text-lg font-bold ${pnlClass}">${monthPnl >= 0 ? '+$' : '-$'}${Math.abs(monthPnl).toFixed(2)}</span>
+        <span class="text-lg font-bold ${pnlClass}">${monthPnl >= 0 ? '+' : '-'}${sym}${Math.abs(monthPnl).toFixed(2)}</span>
       </div>
       <div class="flex flex-col text-center">
         <span class="text-xs text-muted">TRADES</span>

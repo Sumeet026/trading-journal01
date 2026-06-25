@@ -75,6 +75,23 @@ let state = {
   showArchived: false
 };
 
+// --- CURRENCY SYMBOL MAPPING ---
+const currencySymbols = {
+  "USD": "$",
+  "EUR": "€",
+  "GBP": "£",
+  "INR": "₹"
+};
+
+function getCurrencySymbol(currency) {
+  return currencySymbols[currency] || "$";
+}
+
+function getAccountCurrency(accountId) {
+  const acc = state.accounts.find(a => a.id === accountId);
+  return acc ? (acc.currency || "USD") : "USD";
+}
+
 // --- DOM ELEMENTS REFERENCE ---
 const els = {
   authOverlay: document.getElementById("authOverlay"),
@@ -1194,7 +1211,8 @@ function switchTab(pageId) {
     renderPsychologyPage();
   } else if (pageId === "calendarPage") {
     const today = new Date();
-    renderCalendar("calendarContainer", today.getFullYear(), today.getMonth(), state.allTrades, openCalendarDayTrades);
+    const calCurrency = state.activeAccountId !== "all" ? getAccountCurrency(state.activeAccountId) : (state.accounts[0]?.currency || "USD");
+    renderCalendar("calendarContainer", today.getFullYear(), today.getMonth(), state.allTrades, openCalendarDayTrades, calCurrency);
   } else if (pageId === "settingsPage") {
     renderDataDiagnostics();
     renderFirebaseLogs();
@@ -1400,7 +1418,8 @@ function filterDataAndRefresh() {
     renderAnalyticsReports();
   } else if (state.currentTab === "calendarPage") {
     const today = new Date();
-    renderCalendar("calendarContainer", today.getFullYear(), today.getMonth(), state.allTrades, openCalendarDayTrades);
+    const calCurrency = state.activeAccountId !== "all" ? getAccountCurrency(state.activeAccountId) : (state.accounts[0]?.currency || "USD");
+    renderCalendar("calendarContainer", today.getFullYear(), today.getMonth(), state.allTrades, openCalendarDayTrades, calCurrency);
   }
 }
 
@@ -1410,6 +1429,7 @@ function renderDashboard() {
   const activeAccId = state.activeAccountId;
   let startingBalance = 0;
   let transactionBalanceAdjustments = 0;
+  let displayCurrency = "USD";
 
   if (activeAccId === "all") {
     state.accounts.forEach(a => {
@@ -1421,10 +1441,15 @@ function renderDashboard() {
         });
       }
     });
+    // Use first account's currency or default
+    if (state.accounts.length > 0) {
+      displayCurrency = state.accounts[0].currency || "USD";
+    }
   } else {
     const activeAcc = state.accounts.find(a => a.id === activeAccId);
     if (activeAcc) {
       startingBalance = activeAcc.balance;
+      displayCurrency = activeAcc.currency || "USD";
       if (activeAcc.transactions) {
         activeAcc.transactions.forEach(t => {
           if (t.type === "deposit") transactionBalanceAdjustments += t.amount;
@@ -1433,6 +1458,8 @@ function renderDashboard() {
       }
     }
   }
+
+  const sym = getCurrencySymbol(displayCurrency);
 
   // Total Trades
   const totalTradesCount = state.trades.length;
@@ -1496,7 +1523,7 @@ function renderDashboard() {
 
   // Bind values to DOM
   // Today P&L
-  els.statTodayPnL.innerText = todayPnL >= 0 ? "+$" + todayPnL.toFixed(2) : "-$" + Math.abs(todayPnL).toFixed(2);
+  els.statTodayPnL.innerText = todayPnL >= 0 ? "+" + sym + todayPnL.toFixed(2) : "-" + sym + Math.abs(todayPnL).toFixed(2);
   els.statTodayPnL.className = todayPnL >= 0 ? "stat-value text-success" : "stat-value text-danger";
   const todayGrowthPct = currentBalance ? (todayPnL / currentBalance) * 100 : 0;
   els.statTodayTrend.innerHTML = todayPnL >= 0 
@@ -1505,7 +1532,7 @@ function renderDashboard() {
   els.statTodayTrend.className = todayPnL >= 0 ? "stat-trend text-success" : "stat-trend text-danger";
 
   // Total P&L
-  els.statTotalPnL.innerText = netPnL >= 0 ? "+$" + netPnL.toFixed(2) : "-$" + Math.abs(netPnL).toFixed(2);
+  els.statTotalPnL.innerText = netPnL >= 0 ? "+" + sym + netPnL.toFixed(2) : "-" + sym + Math.abs(netPnL).toFixed(2);
   els.statTotalPnL.className = netPnL >= 0 ? "stat-value text-success" : "stat-value text-danger";
   els.statTotalTrend.innerHTML = netPnL >= 0 
     ? `<i class="fa fa-caret-up"></i> +${growthPercent.toFixed(1)}%` 
@@ -1513,7 +1540,7 @@ function renderDashboard() {
   els.statTotalTrend.className = netPnL >= 0 ? "stat-trend text-success" : "stat-trend text-danger";
 
   // Balance
-  els.statBalance.innerText = "$" + currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  els.statBalance.innerText = sym + currentBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   els.statGrowthTrend.innerHTML = `<i class="fa fa-scale-balanced"></i> ${growthPercent >= 0 ? '+' : ''}${growthPercent.toFixed(1)}% net growth`;
 
   // Win Rate
@@ -1526,9 +1553,9 @@ function renderDashboard() {
   els.statAvgRMultiple.innerText = `From ${tradesWithRMultipleCount} rated trades`;
 
   // Best/Worst
-  els.statBestTrade.innerText = "+$" + bestPnL.toFixed(2);
+  els.statBestTrade.innerText = "+" + sym + bestPnL.toFixed(2);
   els.statBestTradeAsset.innerText = bestPnL > 0 ? bestTradeAsset : "-";
-  els.statWorstTrade.innerText = worstPnL < 0 ? "-$" + Math.abs(worstPnL).toFixed(2) : "$0.00";
+  els.statWorstTrade.innerText = worstPnL < 0 ? "-" + sym + Math.abs(worstPnL).toFixed(2) : sym + "0.00";
   els.statWorstTradeAsset.innerText = worstPnL < 0 ? worstTradeAsset : "-";
 
   // --- CALC PREMIUM INSTITUTIONAL METRICS ---
@@ -1686,6 +1713,7 @@ function renderAccountsPage() {
     const currentBal = acc.balance + netTx + tradesPnl;
     const growth = acc.balance ? (tradesPnl / acc.balance) * 100 : 0;
     const valClass = currentBal >= 0 ? "text-success" : "text-danger";
+    const sym = getCurrencySymbol(acc.currency);
 
     els.accountsGrid.innerHTML += `
       <div class="card-premium">
@@ -1705,7 +1733,7 @@ function renderAccountsPage() {
         </div>
         <div class="mb-4">
           <span class="text-xs text-muted">CURRENT BALANCE</span>
-          <h2 class="text-xl font-extrabold ${valClass}">$${currentBal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h2>
+          <h2 class="text-xl font-extrabold ${valClass}">${sym}${currentBal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h2>
           <span class="text-xs text-light">${growth >= 0 ? '+' : ''}${growth.toFixed(2)}% net performance</span>
         </div>
         <div class="flex gap-2">
@@ -1745,7 +1773,7 @@ function renderAccountsPage() {
                 </button>
               </div>
             </div>
-            <span class="text-xs text-muted">Balance: $${acc.balance.toLocaleString()}</span>
+            <span class="text-xs text-muted">Balance: ${getCurrencySymbol(acc.currency)}${acc.balance.toLocaleString()}</span>
           </div>
         `;
       });
@@ -1869,6 +1897,7 @@ function renderHistoryPage() {
       else if (t.result === "Loss") badgeClass = "badge-loss";
 
       const accountName = state.accounts.find(a => a.id === t.accountId)?.name || "Unknown";
+      const tSym = getCurrencySymbol(getAccountCurrency(t.accountId));
 
       els.historyTable.innerHTML += `
         <tr>
@@ -1876,12 +1905,12 @@ function renderHistoryPage() {
           <td><span class="text-xs text-light font-semibold">${accountName}</span></td>
           <td><strong class="text-accent">${t.asset}</strong></td>
           <td><span class="${t.type === 'Buy' ? 'text-success' : 'text-danger'} font-bold text-xs">${t.type.toUpperCase()}</span></td>
-          <td>$${t.entryPrice.toFixed(5).replace(/\.?0+$/, '')}</td>
-          <td>$${t.exitPrice.toFixed(5).replace(/\.?0+$/, '')}</td>
+          <td>${tSym}${t.entryPrice.toFixed(5).replace(/\.?0+$/, '')}</td>
+          <td>${tSym}${t.exitPrice.toFixed(5).replace(/\.?0+$/, '')}</td>
           <td>${t.quantity.toLocaleString()}</td>
           <td><span class="badge ${badgeClass}">${t.result}</span></td>
           <td class="${t.pnl >= 0 ? 'text-success' : 'text-danger'} font-bold">
-            ${t.pnl >= 0 ? '+' : '-'}$${Math.abs(t.pnl).toFixed(2)}
+            ${t.pnl >= 0 ? '+' : '-'}${tSym}${Math.abs(t.pnl).toFixed(2)}
           </td>
           <td class="font-semibold text-accent">${t.rMultiple ? t.rMultiple.toFixed(2) + 'R' : '-'}</td>
           <td>
@@ -1989,7 +2018,8 @@ window.openTradeDetails = function(tradeId) {
   els.detailResultBadge.className = `badge ${badgeClass}`;
   els.detailResultBadge.innerText = t.result;
 
-  els.detailPnl.innerText = (t.pnl >= 0 ? '+$' : '-$') + Math.abs(t.pnl).toFixed(2);
+  const dSym = getCurrencySymbol(getAccountCurrency(t.accountId));
+  els.detailPnl.innerText = (t.pnl >= 0 ? '+' : '-') + dSym + Math.abs(t.pnl).toFixed(2);
   els.detailPnl.className = "text-lg font-bold " + (t.pnl >= 0 ? 'text-success' : 'text-danger');
   
   els.detailRMultiple.innerText = t.rMultiple ? (t.rMultiple >= 0 ? '+' : '-') + Math.abs(t.rMultiple).toFixed(2) + "R" : "-";
@@ -1999,9 +2029,9 @@ window.openTradeDetails = function(tradeId) {
   els.detailDirection.className = "font-semibold " + (t.type === "Buy" ? "text-success" : "text-danger");
   els.detailAsset.innerText = t.asset;
   els.detailQuantity.innerText = t.quantity.toLocaleString();
-  els.detailEntryPrice.innerText = "$" + t.entryPrice;
-  els.detailExitPrice.innerText = "$" + t.exitPrice;
-  els.detailFees.innerText = `$${t.commission || '0'}`;
+  els.detailEntryPrice.innerText = dSym + t.entryPrice;
+  els.detailExitPrice.innerText = dSym + t.exitPrice;
+  els.detailFees.innerText = `${dSym}${t.commission || '0'}`;
 
   els.detailStrategy.innerText = t.strategy || "None Tagged";
   els.detailSetup.innerText = t.setup || "None Specified";
